@@ -256,7 +256,7 @@ st.title("💱 USD/INR Hedging Dashboard")
 st.caption(f"For exporters with USD receivables — {datetime.now().strftime('%A, %d %B %Y')}")
 
 # Section 1 — Decision Box
-render_decision_box(decision, tech.spot, budget_rate=usdinr_rate_assumed)
+render_decision_box(decision, tech.spot)
 render_signal_breakdown(decision)
 
 # Exposure context

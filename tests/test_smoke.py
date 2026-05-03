@@ -50,7 +50,7 @@ def test_compute_levels():
     for lvl in levels:
         assert isinstance(lvl, KeyLevel)
         assert lvl.level_type in ("resistance", "support", "pivot")
-        assert lvl.source in ("weekly_pivot", "monthly_pivot", "swing", "round_number", "200dma")
+        assert lvl.source in ("weekly_pivot", "monthly_pivot", "swing", "200dma")
         assert 1 <= lvl.strength <= 3
         # All levels within ±8% of spot
         assert abs(lvl.price - tech.spot) / tech.spot <= 0.08

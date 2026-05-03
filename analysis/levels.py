@@ -89,20 +89,7 @@ def compute_levels(df: pd.DataFrame, spot: float, sma_200: Optional[float] = Non
         ltype = "support" if price <= spot else "resistance"
         levels.append(KeyLevel(f"Swing Low ({count}×)", round(price, 4), ltype, "swing", strength))
 
-    # ── 4. Round numbers within ±6% of spot ──────────────────────────────────
-    lo, hi = spot * 0.94, spot * 1.06
-    n = int(lo)
-    while n <= int(hi) + 1:
-        for step in (0.0, 0.5):
-            p = round(n + step, 1)
-            if lo <= p <= hi and abs(p - spot) / spot > 0.001:
-                ltype = "resistance" if p > spot else "support"
-                # Integers are stronger than 0.5 levels
-                strength = 2 if step == 0.0 else 1
-                levels.append(KeyLevel(f"Round {p:.1f}", p, ltype, "round_number", strength))
-        n += 1
-
-    # ── 5. 200 DMA ────────────────────────────────────────────────────────────
+    # ── 4. 200 DMA ────────────────────────────────────────────────────────────
     if sma_200:
         ltype = "support" if sma_200 < spot else "resistance"
         levels.append(KeyLevel("200 DMA", round(sma_200, 4), ltype, "200dma", 3))
