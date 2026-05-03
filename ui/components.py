@@ -5,6 +5,7 @@ from analysis.decision_engine import Decision
 from analysis.technicals import TechnicalSnapshot
 from analysis.levels import KeyLevel
 from data.price_fetcher import PriceData
+from data.gold_fetcher import GoldData
 from data.macro_scraper import MacroData
 from data.rbi_scraper import RBIData
 from data.news_fetcher import NewsItem
@@ -180,6 +181,52 @@ def render_technical_summary(
 
     row4[2].markdown("", unsafe_allow_html=True)
     row4[3].markdown("", unsafe_allow_html=True)
+
+
+def render_gold_technical_summary(
+    tech: TechnicalSnapshot,
+    gold: GoldData,
+    dxy: Optional[float] = None,
+    us_vix: Optional[float] = None,
+    gold_5d_change: Optional[float] = None,
+) -> None:
+    st.subheader("Gold — Technical Summary")
+
+    def fmt(val, decimals=2, prefix="", suffix=""):
+        return f"{prefix}{val:.{decimals}f}{suffix}" if val is not None else "N/A"
+
+    spot_usd = f"${tech.spot:,.0f}" if tech.spot else "N/A"
+    inr_val  = f"₹{gold.xauinr_per_10g:,.0f}" if gold.xauinr_per_10g else "N/A"
+    rsi_d    = f"{tech.rsi_daily:.1f}" if tech.rsi_daily else "N/A"
+    rsi_d_color = "#ef4444" if (tech.rsi_daily or 0) > 70 else ("#22c55e" if (tech.rsi_daily or 100) < 30 else "#f59e0b")
+    rsi_w    = f"{tech.rsi_weekly:.1f}" if tech.rsi_weekly else "N/A"
+    mom_str  = f"{gold_5d_change:+.2f}% (5d)" if gold_5d_change is not None else "N/A"
+    mom_color = "#ef4444" if (gold_5d_change or 0) < -0.5 else ("#22c55e" if (gold_5d_change or 0) > 1.0 else "#94a3b8")
+
+    sma200_sub = f"{tech.pct_above_sma200:+.2f}% vs spot" if tech.pct_above_sma200 is not None else ""
+    bb_pct = f"{tech.bb_pct_b*100:.1f}%" if tech.bb_pct_b is not None else "N/A"
+    bb_color = "#ef4444" if (tech.bb_pct_b or 0) > 0.85 else ("#22c55e" if (tech.bb_pct_b or 1) < 0.15 else "#94a3b8")
+
+    gsr_val   = f"{gold.gold_silver_ratio:.0f}" if gold.gold_silver_ratio else "N/A"
+    gsr_color = "#ef4444" if (gold.gold_silver_ratio or 0) > 85 else ("#22c55e" if (gold.gold_silver_ratio or 99) < 70 else "#94a3b8")
+    gsr_sub   = "Expensive vs silver 🔴" if (gold.gold_silver_ratio or 0) > 85 else ("Balanced" if (gold.gold_silver_ratio or 0) > 0 else "")
+
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    row1 = st.columns(4)
+    row1[0].markdown(_stat_card("XAU/USD ($/oz)", spot_usd, f"≈ {inr_val} per 10g"), unsafe_allow_html=True)
+    row1[1].markdown(_stat_card("RSI (14 Daily)", rsi_d, sub_color=rsi_d_color), unsafe_allow_html=True)
+    row1[2].markdown(_stat_card("RSI (14 Weekly)", rsi_w), unsafe_allow_html=True)
+    row1[3].markdown(_stat_card("5d Momentum", mom_str, sub_color=mom_color), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    row2 = st.columns(4)
+    row2[0].markdown(_stat_card("SMA 200", fmt(tech.sma_200, 0, "$"), sma200_sub), unsafe_allow_html=True)
+    row2[1].markdown(_stat_card("BB %B", bb_pct, sub_color=bb_color), unsafe_allow_html=True)
+    row2[2].markdown(_stat_card("Gold/Silver Ratio", gsr_val, gsr_sub, gsr_color), unsafe_allow_html=True)
+    dxy_sub = f"DXY = {dxy:.2f}" if dxy else ""
+    vix_val = f"{us_vix:.1f}" if us_vix else "N/A"
+    vix_color = "#ef4444" if (us_vix or 0) > 25 else "#94a3b8"
+    row2[3].markdown(_stat_card("US VIX", vix_val, dxy_sub, vix_color), unsafe_allow_html=True)
 
 
 def render_key_levels_table(tech: TechnicalSnapshot, levels: List[KeyLevel]) -> None:

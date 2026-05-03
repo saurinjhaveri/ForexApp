@@ -115,6 +115,58 @@ DECISION_COLORS = {
     "SELL ALL FORWARD":   "#991b1b",
 }
 
+GOLD_TICKERS = {
+    "xauusd":  "GC=F",    # COMEX gold futures (most liquid spot proxy)
+    "silver":  "SI=F",    # Silver futures (for Gold/Silver ratio)
+}
+
+GOLD_SIGNAL_WEIGHTS = {
+    # Design principle: same tier hierarchy as USD/INR.
+    # Positive = SELL forward (lock in gold price). Negative = HOLD.
+
+    # ── Technical exhaustion ──────────────────────────────────────────────────────
+    "gold_weekly_rsi_overbought":  +4,   # Weekly RSI > 70 — strongest reversal warning
+    "gold_rsi_overbought":         +2,   # Daily RSI > 70
+    "gold_rsi_moderately_high":    +1,   # Daily RSI 55–70 — background context
+    "gold_rsi_oversold":           -2,   # RSI < 40 — bounce likely, hold
+    "gold_bb_upper_breach":        +2,   # Near upper Bollinger Band — stretched
+    "gold_bb_lower_breach":        -1,   # Near lower band — oversold bounce
+    "gold_extreme_above_200sma":   +2,   # >5% above 200 DMA — historically extended
+    "gold_moderate_above_200sma":  +1,   # 2–5% above 200 DMA — elevated context
+
+    # ── Momentum ──────────────────────────────────────────────────────────────────
+    "gold_momentum_strong":        -2,   # 5d > +1% — trend intact, wait
+    "gold_momentum_fading":        +2,   # 5d ≈ 0% — move losing steam, hedge
+    "gold_momentum_negative":      +3,   # 5d negative — reversal underway
+
+    # ── Macro headwinds / tailwinds ───────────────────────────────────────────────
+    "gold_dxy_strong_rising":      +2,   # DXY > 104 AND rising — USD strength headwind
+    "gold_dxy_rising":             +1,   # DXY 5d up — mild USD headwind
+    "gold_dxy_weak_falling":       -2,   # DXY < 100 AND falling — tailwind for gold
+    "gold_dxy_falling":            -1,   # DXY 5d down — mild tailwind
+    "gold_real_yield_rising":      +2,   # 10Y rising fast (>15bps / 5d) — gold headwind
+    "gold_real_yield_falling":     -2,   # 10Y falling fast — gold tailwind
+    "gold_vix_elevated":           -1,   # VIX > 25 — safe-haven demand supports gold
+
+    # ── Relative value ────────────────────────────────────────────────────────────
+    "gold_silver_ratio_extreme":   +2,   # GSR > 85 — gold expensive vs silver, mean-reversion risk
+    "gold_silver_ratio_low":       -1,   # GSR < 70 — silver leading, gold has more room
+
+    # ── Key level proximity ───────────────────────────────────────────────────────
+    "gold_near_key_resistance":    +2,   # Approaching resistance — sell zone
+    "gold_broke_above_resistance": -2,   # Broke above — momentum intact
+    "gold_near_key_support":       -1,   # Near support — bounce risk
+    "gold_broke_below_support":    +4,   # Broke below support — sell urgently
+}
+
+GOLD_HEDGE_THRESHOLDS = [
+    (0,  "HOLD — Let It Run",   0,  "Low"),
+    (3,  "SELL 25% FORWARD",   25,  "Medium"),
+    (6,  "SELL 50% FORWARD",   50,  "Medium"),
+    (12, "SELL 75% FORWARD",   75,  "High"),
+    (20, "SELL ALL FORWARD",  100,  "High"),
+]
+
 RBI_PRESS_RELEASE_URL = "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx"
 REUTERS_INDIA_RSS     = "https://feeds.reuters.com/reuters/INbusinessNews"
 NSE_CURRENCY_URL      = "https://www.nseindia.com/api/quote-derivative?symbol=USDINR"

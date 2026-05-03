@@ -14,16 +14,19 @@ from data.nse_scraper import fetch_nse_futures
 from data.rbi_scraper import fetch_rbi_data
 from data.macro_scraper import fetch_macro_data
 from data.news_fetcher import fetch_news
+from data.gold_fetcher import fetch_gold_data
 from analysis.technicals import compute_technicals
 from analysis.levels import compute_levels
 from analysis.signals import generate_signals
 from analysis.decision_engine import make_decision
+from analysis.gold_signals import generate_gold_signals, make_gold_decision
 from storage.db import init_db, save_snapshot, get_history, save_decision, get_oi_history, get_premium_history
-from ui.charts import build_usdinr_chart
+from ui.charts import build_usdinr_chart, build_gold_chart
 from ui.components import (
     render_decision_box,
     render_signal_breakdown,
     render_technical_summary,
+    render_gold_technical_summary,
     render_key_levels_table,
     render_macro_panel,
     render_news_panel,
@@ -167,7 +170,8 @@ def load_all_data():
     rbi = fetch_rbi_data()
     macro = fetch_macro_data()
     news = fetch_news()
-    return price, futures, rbi, macro, news
+    gold = fetch_gold_data(usdinr_spot=price.usdinr_spot)
+    return price, futures, rbi, macro, news, gold
 
 
 # Clear stale cache once per session (catches post-deploy schema changes)
@@ -178,7 +182,7 @@ if "cache_version" not in st.session_state:
 if refresh:
     st.cache_data.clear()
 
-price, futures, rbi, macro, news = load_all_data()
+price, futures, rbi, macro, news, gold_data = load_all_data()
 
 
 # ── Technical Analysis ─────────────────────────────────────────────────────────
@@ -317,81 +321,145 @@ save_snapshot(snapshot)
 history = get_history(n=30)
 
 
+# ── Gold analysis ─────────────────────────────────────────────────────────────
+
+gold_5d: Optional[float] = None
+if not gold_data.xauusd_history.empty and len(gold_data.xauusd_history) >= 6:
+    gold_5d = float(
+        (gold_data.xauusd_history["Close"].iloc[-1] /
+         gold_data.xauusd_history["Close"].iloc[-6] - 1) * 100
+    )
+
+gold_tech = None
+gold_levels = []
+gold_signals = []
+gold_decision = None
+if not gold_data.xauusd_history.empty:
+    try:
+        gold_tech = compute_technicals(gold_data.xauusd_history)
+        gold_levels = compute_levels(gold_data.xauusd_history, gold_tech.spot, sma_200=gold_tech.sma_200)
+    except Exception:
+        gold_tech = None
+        gold_levels = []
+    if gold_tech:
+        gold_signals = generate_gold_signals(
+            gold_tech, gold_data,
+            dxy=price.dxy,
+            dxy_5d_change=dxy_5d,
+            us_yield_5d_change=None,
+            us_vix=price.us_vix,
+            gold_5d_change=gold_5d,
+            levels=gold_levels,
+        )
+        gold_decision = make_gold_decision(gold_signals, spot=gold_tech.spot, levels=gold_levels)
+
+
 # ── Layout ─────────────────────────────────────────────────────────────────────
 
-st.title("💱 USD/INR Hedging Dashboard")
-st.caption(f"For exporters with USD receivables — {datetime.now().strftime('%A, %d %B %Y')}")
+st.title("📊 Hedge Dashboard")
+st.caption(datetime.now().strftime('%A, %d %B %Y'))
 
-# Section 1 — Decision Box
-render_decision_box(decision, tech.spot)
-render_signal_breakdown(decision)
+tab_fx, tab_gold = st.tabs(["💱 USD/INR", "🥇 Gold"])
 
-# Exposure + scenario table
-if monthly_receivable_usd:
-    render_scenario_table(
-        monthly_receivable_usd=monthly_receivable_usd,
-        hedge_ratio=decision.hedge_ratio,
-        spot=tech.spot or 84.0,
-        bear_pct=3.0,
-        bull_pct=1.5,
-        forward_rate=futures.near_month_price,
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 1 — USD/INR
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_fx:
+    render_decision_box(decision, tech.spot)
+    render_signal_breakdown(decision)
+
+    if monthly_receivable_usd:
+        render_scenario_table(
+            monthly_receivable_usd=monthly_receivable_usd,
+            hedge_ratio=decision.hedge_ratio,
+            spot=tech.spot or 84.0,
+            bear_pct=3.0,
+            bull_pct=1.5,
+            forward_rate=futures.near_month_price,
+        )
+
+    st.divider()
+
+    render_technical_summary(
+        tech,
+        futures.near_month_price,
+        futures.near_month_basis,
+        futures_oi=futures.near_month_oi,
+        futures_oi_change=futures.near_month_oi_change,
+        oi_pct_above_avg=oi_pct_above_avg,
+        annualized_premium=futures.annualized_premium_pct,
+        forward_premium_pctile=forward_premium_pctile_rank,
+        inr_em_divergence=inr_em_divergence,
+        em_basket_5d=em_basket_5d,
+    )
+    st.plotly_chart(
+        build_usdinr_chart(price.usdinr_history, tech, levels, lookback_months),
+        use_container_width=True,
     )
 
-st.divider()
+    st.divider()
+    render_key_levels_table(tech, levels)
 
-# Section 2 — Technical Summary
-render_technical_summary(
-    tech,
-    futures.near_month_price,
-    futures.near_month_basis,
-    futures_oi=futures.near_month_oi,
-    futures_oi_change=futures.near_month_oi_change,
-    oi_pct_above_avg=oi_pct_above_avg,
-    annualized_premium=futures.annualized_premium_pct,
-    forward_premium_pctile=forward_premium_pctile_rank,
-    inr_em_divergence=inr_em_divergence,
-    em_basket_5d=em_basket_5d,
-)
-st.plotly_chart(
-    build_usdinr_chart(price.usdinr_history, tech, levels, lookback_months),
-    use_container_width=True,
-)
+    st.divider()
+    render_macro_panel(price, macro, rbi)
 
-st.divider()
+    st.divider()
+    render_news_panel(news)
 
-# Section 3 — Key Levels
-render_key_levels_table(tech, levels)
+    st.divider()
+    render_history_table(history)
 
-st.divider()
+    st.divider()
+    with st.expander("Log today's actual decision"):
+        action = st.selectbox(
+            "Action taken",
+            ["WAIT", "Hedged 25%", "Hedged 50%", "Hedged 75%", "Hedged 100%"],
+        )
+        pct = st.slider("Hedge %", 0, 100, 0, step=25)
+        notes = st.text_area("Notes (optional)")
+        if st.button("Save Decision"):
+            save_decision({
+                "date":         today,
+                "action_taken": action,
+                "hedge_pct":    pct,
+                "notes":        notes,
+            })
+            st.success("Decision logged.")
 
-# Section 4 — Macro Dashboard
-render_macro_panel(price, macro, rbi)
 
-st.divider()
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 2 — GOLD
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_gold:
+    if gold_decision is None or gold_tech is None:
+        st.error("Could not load gold price data. Check your internet connection.")
+    else:
+        render_decision_box(gold_decision, gold_tech.spot)
+        render_signal_breakdown(gold_decision)
 
-# Section 5 — News
-render_news_panel(news)
+        if monthly_receivable_usd:
+            render_scenario_table(
+                monthly_receivable_usd=monthly_receivable_usd,
+                hedge_ratio=gold_decision.hedge_ratio,
+                spot=gold_tech.spot or 2400.0,
+                bear_pct=4.0,
+                bull_pct=2.0,
+                forward_rate=None,
+            )
 
-st.divider()
+        st.divider()
 
-# Section 6 — Decision History
-render_history_table(history)
+        render_gold_technical_summary(
+            gold_tech, gold_data,
+            dxy=price.dxy,
+            us_vix=price.us_vix,
+            gold_5d_change=gold_5d,
+        )
+        st.plotly_chart(
+            build_gold_chart(gold_data.xauusd_history, gold_tech, gold_levels, lookback_months),
+            use_container_width=True,
+        )
 
-st.divider()
-
-# Section 7 — Log manual decision
-with st.expander("Log today's actual decision"):
-    action = st.selectbox(
-        "Action taken",
-        ["WAIT", "Hedged 25%", "Hedged 50%", "Hedged 75%", "Hedged 100%"],
-    )
-    pct = st.slider("Hedge %", 0, 100, 0, step=25)
-    notes = st.text_area("Notes (optional)")
-    if st.button("Save Decision"):
-        save_decision({
-            "date":         today,
-            "action_taken": action,
-            "hedge_pct":    pct,
-            "notes":        notes,
-        })
-        st.success("Decision logged.")
+        st.divider()
+        render_key_levels_table(gold_tech, gold_levels)
