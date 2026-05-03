@@ -20,6 +20,7 @@ from analysis.levels import compute_levels
 from analysis.signals import generate_signals
 from analysis.decision_engine import make_decision
 from analysis.gold_signals import generate_gold_signals, make_gold_decision
+from analysis.trade_setup import compute_trade_setup
 from storage.db import init_db, save_snapshot, get_history, save_decision, get_oi_history, get_premium_history
 from ui.charts import build_usdinr_chart, build_gold_chart
 from ui.components import (
@@ -32,6 +33,7 @@ from ui.components import (
     render_news_panel,
     render_history_table,
     render_scenario_table,
+    render_trade_box,
 )
 
 st.set_page_config(
@@ -143,6 +145,18 @@ st.markdown("""
 
 with st.sidebar:
     st.title("⚙ Controls")
+
+    st.markdown("**Mode**")
+    app_mode = st.radio(
+        "app_mode", ["Hedging", "Trading"],
+        horizontal=True, label_visibility="collapsed",
+    )
+    if app_mode == "Hedging":
+        st.caption("Lock in rates/prices for your existing exposure.")
+    else:
+        st.caption("Speculative entries with stop loss & targets.")
+
+    st.markdown("---")
     st.markdown("**Exposure Settings**")
     monthly_receivable_usd = st.number_input(
         "Monthly Receivables (USD)", value=500_000, step=50_000, format="%d"
@@ -366,18 +380,22 @@ tab_fx, tab_gold = st.tabs(["💱 USD/INR", "🥇 Gold"])
 # TAB 1 — USD/INR
 # ════════════════════════════════════════════════════════════════════════════════
 with tab_fx:
-    render_decision_box(decision, tech.spot)
-    render_signal_breakdown(decision)
-
-    if monthly_receivable_usd:
-        render_scenario_table(
-            monthly_receivable_usd=monthly_receivable_usd,
-            hedge_ratio=decision.hedge_ratio,
-            spot=tech.spot or 84.0,
-            bear_pct=3.0,
-            bull_pct=1.5,
-            forward_rate=futures.near_month_price,
-        )
+    if app_mode == "Hedging":
+        render_decision_box(decision, tech.spot)
+        render_signal_breakdown(decision)
+        if monthly_receivable_usd:
+            render_scenario_table(
+                monthly_receivable_usd=monthly_receivable_usd,
+                hedge_ratio=decision.hedge_ratio,
+                spot=tech.spot or 84.0,
+                bear_pct=3.0,
+                bull_pct=1.5,
+                forward_rate=futures.near_month_price,
+            )
+    else:
+        fx_trade = compute_trade_setup(decision.score, tech, levels, decision.signals, decision.confidence)
+        render_trade_box(fx_trade, tech.spot, instrument="USD/INR")
+        render_signal_breakdown(decision)
 
     st.divider()
 
@@ -435,18 +453,25 @@ with tab_gold:
     if gold_decision is None or gold_tech is None:
         st.error("Could not load gold price data. Check your internet connection.")
     else:
-        render_decision_box(gold_decision, gold_tech.spot)
-        render_signal_breakdown(gold_decision)
-
-        if monthly_receivable_usd:
-            render_scenario_table(
-                monthly_receivable_usd=monthly_receivable_usd,
-                hedge_ratio=gold_decision.hedge_ratio,
-                spot=gold_tech.spot or 2400.0,
-                bear_pct=4.0,
-                bull_pct=2.0,
-                forward_rate=None,
+        if app_mode == "Hedging":
+            render_decision_box(gold_decision, gold_tech.spot)
+            render_signal_breakdown(gold_decision)
+            if monthly_receivable_usd:
+                render_scenario_table(
+                    monthly_receivable_usd=monthly_receivable_usd,
+                    hedge_ratio=gold_decision.hedge_ratio,
+                    spot=gold_tech.spot or 2400.0,
+                    bear_pct=4.0,
+                    bull_pct=2.0,
+                    forward_rate=None,
+                )
+        else:
+            gold_trade = compute_trade_setup(
+                gold_decision.score, gold_tech, gold_levels,
+                gold_decision.signals, gold_decision.confidence,
             )
+            render_trade_box(gold_trade, gold_tech.spot, instrument="Gold XAU/USD")
+            render_signal_breakdown(gold_decision)
 
         st.divider()
 

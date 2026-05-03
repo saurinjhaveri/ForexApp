@@ -4,6 +4,7 @@ import pandas as pd
 from analysis.decision_engine import Decision
 from analysis.technicals import TechnicalSnapshot
 from analysis.levels import KeyLevel
+from analysis.trade_setup import TradeSetup
 from data.price_fetcher import PriceData
 from data.gold_fetcher import GoldData
 from data.macro_scraper import MacroData
@@ -365,3 +366,92 @@ def render_history_table(history: List[dict]) -> None:
         "rsi_daily": "RSI", "dxy": "DXY", "score": "Score",
     })
     st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def render_trade_box(setup: TradeSetup, spot: float, instrument: str = "USD/INR") -> None:
+    is_gold = "gold" in instrument.lower() or "xau" in instrument.lower()
+    price_decimals = 0 if is_gold else 4
+
+    def fmt_price(val: Optional[float]) -> str:
+        if val is None:
+            return "—"
+        return f"{val:,.{price_decimals}f}"
+
+    # ── Direction badge ────────────────────────────────────────────────────────────
+    direction = setup.direction.upper()
+    if direction == "SHORT":
+        badge_bg, badge_fg, badge_label = "#fef2f2", "#991b1b", "▼ SHORT"
+        accent_color = "#ef4444"
+    elif direction == "LONG":
+        badge_bg, badge_fg, badge_label = "#f0fdf4", "#14532d", "▲ LONG"
+        accent_color = "#22c55e"
+    else:
+        badge_bg, badge_fg, badge_label = "#1e293b", "#94a3b8", "◈ WAIT — No Clear Setup"
+        accent_color = "#94a3b8"
+
+    st.markdown(
+        f"<div style='display:inline-block; padding:6px 18px; background:{badge_bg}; "
+        f"color:{badge_fg}; border-radius:20px; font-size:1.1rem; font-weight:800; "
+        f"letter-spacing:0.06em; margin-bottom:8px;'>{badge_label}</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── Signal strength + confidence subtitle ─────────────────────────────────────
+    st.markdown(
+        f"<div style='font-size:0.82rem; color:#94a3b8; margin-bottom:14px;'>"
+        f"Signal Strength: <span style='color:#f1f5f9; font-weight:600;'>{setup.signal_strength}</span>"
+        f"&nbsp;·&nbsp;"
+        f"Confidence: <span style='color:#f1f5f9; font-weight:600;'>{setup.confidence}</span>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── 4 metric cards ─────────────────────────────────────────────────────────────
+    rr_sub = f"R/R: {setup.rr_ratio:.1f}×" if setup.rr_ratio is not None else ""
+
+    cols = st.columns(4)
+    cols[0].markdown(
+        _stat_card("Entry", fmt_price(spot), "Current market price"),
+        unsafe_allow_html=True,
+    )
+    cols[1].markdown(
+        _stat_card(
+            "Stop Loss",
+            fmt_price(setup.stop_loss),
+            f"{setup.stop_distance_pct:.2f}% from entry",
+            sub_color="#ef4444",
+        ),
+        unsafe_allow_html=True,
+    )
+    cols[2].markdown(
+        _stat_card(
+            "Target 1",
+            fmt_price(setup.target_1),
+            rr_sub,
+            sub_color="#22c55e",
+        ),
+        unsafe_allow_html=True,
+    )
+    cols[3].markdown(
+        _stat_card("Target 2", fmt_price(setup.target_2), "Extended target"),
+        unsafe_allow_html=True,
+    )
+
+    # ── Key reasons ───────────────────────────────────────────────────────────────
+    if setup.key_reasons:
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        for reason in setup.key_reasons:
+            st.markdown(
+                f"<div style='padding:9px 14px; background:rgba(255,255,255,0.04); "
+                f"border-left:3px solid {accent_color}; border-radius:5px; "
+                f"font-size:0.88rem; color:#cbd5e1; margin-bottom:6px;'>"
+                f"▸ {reason}</div>",
+                unsafe_allow_html=True,
+            )
+
+    # ── Risk note ─────────────────────────────────────────────────────────────────
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    st.caption(
+        "Stop and targets derived from ATR(14) and key S/R levels. "
+        "Adjust based on your risk tolerance."
+    )
