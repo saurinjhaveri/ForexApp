@@ -147,19 +147,21 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.markdown("**Key Levels (editable)**")
+    st.markdown("**Key Levels**")
+    st.caption("Pre-filled with technically significant USD/INR levels. Edit any price to match your contracts.")
     levels = []
-    for i, default in enumerate(DEFAULT_LEVELS):
-        if default["type"] == "dynamic":
-            continue
-        name = st.text_input(f"Level {i+1} name", value=default["name"], key=f"lname_{i}")
-        price_lvl = st.number_input(
-            f"Level {i+1} price", value=float(default["price"]), step=0.25, key=f"lprice_{i}"
-        )
-        ltype = st.selectbox(
-            f"Level {i+1} type", ["resistance", "support"], key=f"ltype_{i}",
-            index=0 if default["type"] == "resistance" else 1,
-        )
+    non_dynamic = [d for d in DEFAULT_LEVELS if d["type"] != "dynamic"]
+    for i, default in enumerate(non_dynamic):
+        with st.expander(f"{default['name']}  —  {default['price']:.2f}", expanded=False):
+            name = st.text_input("Label", value=default["name"], key=f"lname_{i}")
+            price_lvl = st.number_input(
+                "Price (USD/INR)", value=float(default["price"]), step=0.25,
+                format="%.2f", key=f"lprice_{i}",
+            )
+            ltype = st.selectbox(
+                "Type", ["resistance", "support"], key=f"ltype_{i}",
+                index=0 if default["type"] == "resistance" else 1,
+            )
         levels.append({"name": name, "price": price_lvl, "type": ltype})
 
     st.markdown("---")
