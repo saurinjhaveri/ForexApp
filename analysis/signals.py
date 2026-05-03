@@ -48,9 +48,9 @@ def generate_signals(
         if tech.rsi_daily > 70:
             add("rsi_overbought",
                 f"Daily RSI = {tech.rsi_daily:.1f} — overbought, short-term reversal risk")
-        elif tech.rsi_daily > 60:
+        elif tech.rsi_daily > 55:
             add("rsi_moderately_high",
-                f"Daily RSI = {tech.rsi_daily:.1f} — elevated but has room; trend intact short-term")
+                f"Daily RSI = {tech.rsi_daily:.1f} — elevated; aggressive hedger should start reducing exposure")
         elif tech.rsi_daily < 40:
             add("rsi_oversold",
                 f"Daily RSI = {tech.rsi_daily:.1f} — oversold, USD/INR likely to bounce; hold open")

@@ -22,54 +22,57 @@ TECHNICAL_PARAMS = {
 
 
 SIGNAL_WEIGHTS = {
-    # ── Exhaustion / reversal risk (positive = sell forward to lock in bonus) ────
-    "weekly_rsi_overbought":    +3,   # Weekly RSI > 70 — strongest mean-reversion signal
-    "rsi_overbought":           +2,   # Daily RSI > 70
-    "rsi_moderately_high":      +1,   # Daily RSI 60-70 — momentum elevated but not extreme
-    "rsi_oversold":             -2,   # Daily RSI < 40 — bounce likely, hold open
-    "bb_upper_breach":          +2,   # Price in upper Bollinger Band — stretched
-    "bb_lower_breach":          -1,   # Price near lower band — hold, may bounce
-    "extreme_above_200sma":     +2,   # >5% above 200 DMA — historically extended, mean-reversion likely
-    "moderately_above_200sma":  +1,   # 2-5% above 200 DMA — elevated but not extreme
-    "high_volatility":          +1,   # ATR elevated — heightened two-way risk
+    # ── Exhaustion / reversal risk ────────────────────────────────────────────────
+    # Aggressive stance: sell signals hit harder; even mild overbought conditions matter
+    "weekly_rsi_overbought":    +4,   # Weekly RSI > 70 — primary mean-reversion signal (was +3)
+    "rsi_overbought":           +3,   # Daily RSI > 70 (was +2)
+    "rsi_moderately_high":      +2,   # Daily RSI 55-70 — elevated enough to act on aggressively (was +1)
+    "rsi_oversold":             -2,   # Daily RSI < 40 — only strong enough to pause, not stop
+    "bb_upper_breach":          +3,   # Price in upper Bollinger Band — stretched, lock in (was +2)
+    "bb_lower_breach":          -1,   # Near lower band — minor hold signal only
+    "extreme_above_200sma":     +3,   # >5% above 200 DMA — historically unsustainable (was +2)
+    "moderately_above_200sma":  +2,   # 2-5% above 200 DMA — still elevated, sell into it (was +1)
+    "high_volatility":          +1,   # ATR elevated — two-way risk; protect the gain
 
-    # ── DXY: global dollar direction ─────────────────────────────────────────────
-    "dxy_weak_level":           +2,   # DXY < 100 — dollar soft globally; INR weakness is India-specific
-    "dxy_usdinr_divergence":    +3,   # DXY falling WHILE USD/INR rising — INR-specific weakness snaps back fast
-    "dxy_falling":              +2,   # DXY 5d momentum negative
-    "dxy_strong_level":         -1,   # DXY > 104 — genuine broad dollar strength
-    "dxy_rising":               -2,   # DXY 5d momentum positive — USD strengthening globally
+    # ── DXY: global dollar direction ──────────────────────────────────────────────
+    "dxy_weak_level":           +3,   # DXY < 100 — INR weakness is India-specific, snaps back fast (was +2)
+    "dxy_usdinr_divergence":    +4,   # DXY falling + USD/INR rising — strongest sell trigger (was +3)
+    "dxy_falling":              +3,   # DXY 5d momentum down (was +2)
+    "dxy_strong_level":         -1,   # DXY > 104 — some global USD support, minor offset
+    "dxy_rising":               -1,   # DXY momentum up — aggressive hedger doesn't let this stop selling (was -2)
 
     # ── USD/INR price momentum ────────────────────────────────────────────────────
-    "usdinr_momentum_strong":   -2,   # USD/INR 5d > +0.5% — trend intact, wait for more
-    "usdinr_momentum_fading":   +1,   # USD/INR 5d between -0.2% and +0.2% — losing steam
-    "usdinr_momentum_negative": +2,   # USD/INR 5d negative — reversal underway
+    # Aggressive: short-term uptrend is NOT a reason to hold back — it's a better sell price
+    "usdinr_momentum_strong":   -1,   # USD/INR 5d > +0.5% — trend up, but still sell into strength (was -2)
+    "usdinr_momentum_fading":   +2,   # Momentum fading — act before reversal is confirmed (was +1)
+    "usdinr_momentum_negative": +3,   # Reversal underway — sell urgently (was +2)
 
     # ── India macro ───────────────────────────────────────────────────────────────
-    "oil_falling":              +1,   # Brent falling — less INR import pressure, INR can strengthen
-    "oil_rising":               -1,   # Brent rising — imports pressure INR, USD/INR stays bid
-    "fii_inflow_strong":        +2,   # FII buying India equities — INR demand, sell USD high
-    "fii_outflow_strong":       -2,   # FII selling — INR under pressure, hold
+    "oil_falling":              +2,   # Oil down → INR can strengthen; lock in USD now (was +1)
+    "oil_rising":               -1,   # Oil up → minor support for USD/INR
+    "fii_inflow_strong":        +3,   # FII buying India → INR demand incoming (was +2)
+    "fii_outflow_strong":       -1,   # FII selling → still sell, just with less urgency (was -2)
     "us_yield_falling":         +1,   # US yields down — USD softening
     "us_yield_rising":          -1,   # US yields up — USD supported
 
     # ── Event / intervention ──────────────────────────────────────────────────────
-    "rbi_intervention_signal":  +2,   # RBI selling USD — explicit cap, don't fight it
+    "rbi_intervention_signal":  +3,   # RBI selling USD — explicit cap, sell alongside RBI (was +2)
 
     # ── Key level proximity / breakout ────────────────────────────────────────────
-    "near_key_resistance":      +2,   # Spot within 0.35% below a resistance — classic sell zone
-    "broke_above_resistance":   -2,   # Spot just broke above resistance — momentum continuation
-    "near_key_support":         -1,   # Spot within 0.35% above a support — hold, bounce expected
-    "broke_below_support":      +3,   # Spot just broke below support — INR weakness accelerating, sell now
+    "near_key_resistance":      +3,   # Approaching resistance — prime sell zone (was +2)
+    "broke_above_resistance":   -1,   # Broke above — momentum intact, but still lean sell (was -2)
+    "near_key_support":         -1,   # Near support — minor caution only
+    "broke_below_support":      +4,   # Broke below support — sell urgently (was +3)
 }
 
 HEDGE_THRESHOLDS = [
-    # score → action for opportunistic exporter (budget rate ≈ ₹90, spot ≈ ₹94-95)
-    (0,   "HOLD — Let It Run",  0,   "Low"),     # no reversal signals — ride the USD strength
-    (3,   "SELL 25% FORWARD",  25,  "Low"),      # early warning — take some off the table
-    (5,   "SELL 50% FORWARD",  50,  "Medium"),   # mixed signals — lock in half the bonus
-    (8,   "SELL 75% FORWARD",  75,  "High"),     # strong reversal risk — protect most of the gain
-    (11,  "SELL ALL FORWARD", 100,  "High"),     # all signals flashing — sell everything now
+    # Aggressive calibration: start selling earlier, escalate faster
+    # Neutral market (score 0) = no clear hold signals = still protect gains
+    (0,  "HOLD — Let It Run",   0,  "Low"),     # Only if active HOLD signals dominate
+    (2,  "SELL 25% FORWARD",   25,  "Medium"),  # Any two positive signals → start locking in (was 3)
+    (4,  "SELL 50% FORWARD",   50,  "Medium"),  # Moderate evidence → half exposure hedged (was 5)
+    (7,  "SELL 75% FORWARD",   75,  "High"),    # Strong signals → most of exposure protected (was 8)
+    (10, "SELL ALL FORWARD",  100,  "High"),    # All signals aligned → full hedge (was 11)
 ]
 
 DECISION_COLORS = {
