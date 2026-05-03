@@ -100,17 +100,18 @@ def compute_levels(df: pd.DataFrame, spot: float, sma_200: Optional[float] = Non
             levels += _pivot_levels(monthly.iloc[-2], "Monthly")
 
         # ── 3. Swing highs / lows (last 252 trading days) ────────────────────
+        # Use 1.0% clustering so nearby touches merge into one level
         recent = df.tail(252)
         if len(recent) > 10:
             raw_highs, raw_lows = _find_swings(recent["High"], recent["Low"], window=5)
 
-            for price, count in _cluster(raw_highs, tolerance_pct=0.4):
+            for price, count in _cluster(raw_highs, tolerance_pct=1.0):
                 strength = 3 if count >= 3 else (2 if count == 2 else 1)
                 ltype = "resistance" if price >= spot else "support"
                 label = "Swing High" if ltype == "resistance" else "Swing Hi/Lo"
                 levels.append(KeyLevel(f"{label} ({count}×)", round(price, 4), ltype, "swing", strength))
 
-            for price, count in _cluster(raw_lows, tolerance_pct=0.4):
+            for price, count in _cluster(raw_lows, tolerance_pct=1.0):
                 strength = 3 if count >= 3 else (2 if count == 2 else 1)
                 ltype = "support" if price <= spot else "resistance"
                 levels.append(KeyLevel(f"Swing Low ({count}×)", round(price, 4), ltype, "swing", strength))
@@ -133,6 +134,11 @@ def compute_levels(df: pd.DataFrame, spot: float, sma_200: Optional[float] = Non
             seen.append(lvl.price)
             unique.append(lvl)
 
-    # ── Filter to ±8% of spot, sort price descending ─────────────────────────
+    # ── Filter to ±8% of spot ─────────────────────────────────────────────────
     unique = [l for l in unique if abs(l.price - spot) / spot <= 0.08]
-    return sorted(unique, key=lambda l: l.price, reverse=True)
+
+    # ── Cap: 4 closest resistance above spot + 4 closest support below spot ──
+    resistance = sorted([l for l in unique if l.price > spot], key=lambda l: l.price)[:4]
+    support    = sorted([l for l in unique if l.price <= spot], key=lambda l: l.price, reverse=True)[:4]
+
+    return sorted(resistance + support, key=lambda l: l.price, reverse=True)
