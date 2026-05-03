@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('/Users/saurinjhaveri/ForexApp/.claude/settings.json'\\)\\); print\\(f'Valid JSON, {len\\(d[\\\\\"permissions\\\\\"][\\\\\"allow\\\\\"]\\)} allow rules, defaultMode={d[\\\\\"permissions\\\\\"][\\\\\"defaultMode\\\\\"]}'\\)\")"
+    ]
+  }
+}

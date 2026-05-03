@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(pip *)",
+      "Bash(pip3 *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(pytest *)",
+      "Bash(git init*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status*)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(curl *)",
+      "Bash(sleep *)",
+      "Bash(pkill *)",
+      "Bash(kill *)",
+      "Bash(streamlit *)",
+      "Bash(ls *)",
+      "Bash(ls)",
+      "Bash(cat *)",
+      "Bash(echo *)",
+      "Bash(true)",
+      "Bash(which *)",
+      "Bash(cd *)",
+      "Read",
+      "Write",
+      "Edit"
+    ]
+  }
+}
