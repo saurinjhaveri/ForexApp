@@ -146,7 +146,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("**Key Levels**")
-    st.caption("Auto-computed from price history: weekly/monthly pivots, swing highs/lows, round numbers, 200 DMA.")
+    st.caption("Auto-computed from price history: weekly/monthly pivots, swing highs/lows, 200 DMA.")
 
     st.markdown("---")
     st.markdown("**Chart Settings**")
@@ -197,7 +197,10 @@ usdinr_5d = _5d_change(price.usdinr_history)
 
 # ── Compute key levels from price history ──────────────────────────────────────
 
-levels = compute_levels(price.usdinr_history, tech.spot, sma_200=tech.sma_200)
+try:
+    levels = compute_levels(price.usdinr_history, tech.spot, sma_200=tech.sma_200)
+except Exception:
+    levels = []
 
 # Show computed levels in sidebar
 with st.sidebar:
