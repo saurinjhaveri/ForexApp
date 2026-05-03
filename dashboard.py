@@ -150,12 +150,6 @@ with st.sidebar:
     st.caption("Auto-computed from price history: weekly/monthly pivots, swing highs/lows, 200 DMA.")
 
     st.markdown("---")
-    st.markdown("**Scenario Settings**")
-    st.caption("Asymmetric by default: RBI caps upside, no floor on downside.")
-    scenario_bear_pct = st.slider("Bear scenario (INR strengthens %)", 1.0, 5.0, 3.0, step=0.5)
-    scenario_bull_pct = st.slider("Bull scenario (INR weakens %)",     0.5, 3.0, 1.5, step=0.5)
-
-    st.markdown("---")
     st.markdown("**Chart Settings**")
     lookback_months = st.slider("Chart lookback (months)", 1, 24, 6)
 
@@ -338,8 +332,8 @@ if monthly_receivable_usd:
         monthly_receivable_usd=monthly_receivable_usd,
         hedge_ratio=decision.hedge_ratio,
         spot=tech.spot or 84.0,
-        bear_pct=scenario_bear_pct,
-        bull_pct=scenario_bull_pct,
+        bear_pct=3.0,
+        bull_pct=1.5,
         forward_rate=futures.near_month_price,
     )
 
