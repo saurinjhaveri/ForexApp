@@ -176,6 +176,11 @@ def load_all_data():
     return price, futures, rbi, macro, news
 
 
+# Clear stale cache once per session (catches post-deploy schema changes)
+if "cache_version" not in st.session_state:
+    st.cache_data.clear()
+    st.session_state["cache_version"] = "v3"
+
 if refresh:
     st.cache_data.clear()
 
