@@ -22,64 +22,71 @@ TECHNICAL_PARAMS = {
 
 
 SIGNAL_WEIGHTS = {
+    # Design principle:
+    #   Background / structural signals  → weight +1  (context, not action triggers)
+    #   Momentum / confirmation signals   → weight +2  (adds to case)
+    #   High-conviction reversal triggers → weight +3/+4  (rare, specific, actionable)
+    # Prevents correlated signals (e.g. DXY weak + DXY falling + DXY divergence) from
+    # stacking into extreme scores.
+
     # ── Exhaustion / reversal risk ────────────────────────────────────────────────
-    # Aggressive stance: sell signals hit harder; even mild overbought conditions matter
-    "weekly_rsi_overbought":    +4,   # Weekly RSI > 70 — primary mean-reversion signal (was +3)
-    "rsi_overbought":           +3,   # Daily RSI > 70 (was +2)
-    "rsi_moderately_high":      +2,   # Daily RSI 55-70 — elevated enough to act on aggressively (was +1)
-    "rsi_oversold":             -2,   # Daily RSI < 40 — only strong enough to pause, not stop
-    "bb_upper_breach":          +3,   # Price in upper Bollinger Band — stretched, lock in (was +2)
-    "bb_lower_breach":          -1,   # Near lower band — minor hold signal only
-    "extreme_above_200sma":     +3,   # >5% above 200 DMA — historically unsustainable (was +2)
-    "moderately_above_200sma":  +2,   # 2-5% above 200 DMA — still elevated, sell into it (was +1)
-    "high_volatility":          +1,   # ATR elevated — two-way risk; protect the gain
+    "weekly_rsi_overbought":    +4,   # Weekly RSI > 70 — strongest mean-reversion signal; rare + predictive
+    "rsi_overbought":           +2,   # Daily RSI > 70 — overbought short-term
+    "rsi_moderately_high":      +1,   # Daily RSI 55-70 — background context
+    "rsi_oversold":             -2,   # Daily RSI < 40 — bounce likely
+    "bb_upper_breach":          +2,   # Price near upper Bollinger Band — stretched
+    "bb_lower_breach":          -1,   # Near lower band — bounce risk
+    "extreme_above_200sma":     +2,   # >5% above 200 DMA — historically extended
+    "moderately_above_200sma":  +1,   # 2-5% above 200 DMA — context, not trigger alone
+    "high_volatility":          +1,   # ATR elevated — two-way risk
 
     # ── DXY: global dollar direction ──────────────────────────────────────────────
-    "dxy_weak_level":           +3,   # DXY < 100 — INR weakness is India-specific, snaps back fast (was +2)
-    "dxy_usdinr_divergence":    +4,   # DXY falling + USD/INR rising — strongest sell trigger (was +3)
-    "dxy_falling":              +3,   # DXY 5d momentum down (was +2)
-    "dxy_strong_level":         -1,   # DXY > 104 — some global USD support, minor offset
-    "dxy_rising":               -1,   # DXY momentum up — aggressive hedger doesn't let this stop selling (was -2)
+    # dxy_usdinr_divergence is the SPECIFIC trigger; weak_level + falling are background
+    "dxy_usdinr_divergence":    +4,   # DXY falling WHILE USD/INR rising — India-specific weakness
+    "dxy_weak_level":           +1,   # DXY < 100 — structural context; not an action trigger alone
+    "dxy_falling":              +1,   # DXY 5d down — background momentum
+    "dxy_strong_level":         -2,   # DXY > 104 — genuine broad USD strength
+    "dxy_rising":               -2,   # DXY 5d up — dollar has momentum
 
     # ── USD/INR price momentum ────────────────────────────────────────────────────
-    # Aggressive: short-term uptrend is NOT a reason to hold back — it's a better sell price
-    "usdinr_momentum_strong":   -1,   # USD/INR 5d > +0.5% — trend up, but still sell into strength (was -2)
-    "usdinr_momentum_fading":   +2,   # Momentum fading — act before reversal is confirmed (was +1)
-    "usdinr_momentum_negative": +3,   # Reversal underway — sell urgently (was +2)
+    "usdinr_momentum_strong":   -2,   # USD/INR 5d > +0.5% — trend intact; wait for turn
+    "usdinr_momentum_fading":   +2,   # Momentum fading — hedge before reversal confirmed
+    "usdinr_momentum_negative": +3,   # Reversal already underway — act now
 
     # ── India macro ───────────────────────────────────────────────────────────────
-    "oil_falling":              +2,   # Oil down → INR can strengthen; lock in USD now (was +1)
-    "oil_rising":               -1,   # Oil up → minor support for USD/INR
-    "fii_inflow_strong":        +3,   # FII buying India → INR demand incoming (was +2)
-    "fii_outflow_strong":       -1,   # FII selling → still sell, just with less urgency (was -2)
+    "oil_falling":              +1,   # Oil down → INR can strengthen
+    "oil_rising":               -1,   # Oil up → USD/INR stays bid
+    "fii_inflow_strong":        +2,   # FII buying India equities → INR demand
+    "fii_outflow_strong":       -2,   # FII selling → INR under pressure
     "us_yield_falling":         +1,   # US yields down — USD softening
     "us_yield_rising":          -1,   # US yields up — USD supported
 
     # ── Event / intervention ──────────────────────────────────────────────────────
-    "rbi_intervention_signal":  +3,   # RBI selling USD — explicit cap, sell alongside RBI (was +2)
+    "rbi_intervention_signal":  +3,   # RBI selling USD — explicit cap; high-conviction
 
     # ── Key level proximity / breakout ────────────────────────────────────────────
-    "near_key_resistance":      +3,   # Approaching resistance — prime sell zone (was +2)
-    "broke_above_resistance":   -1,   # Broke above — momentum intact, but still lean sell (was -2)
-    "near_key_support":         -1,   # Near support — minor caution only
-    "broke_below_support":      +4,   # Broke below support — sell urgently (was +3)
+    "near_key_resistance":      +2,   # Approaching resistance — sell zone
+    "broke_above_resistance":   -2,   # Broke above — momentum intact
+    "near_key_support":         -1,   # Near support — bounce risk
+    "broke_below_support":      +4,   # Broke below support — reversal confirmed; sell urgently
 
     # ── Futures open interest positioning ────────────────────────────────────────
-    "oi_longs_building":        +2,   # OI up + price up → new longs; crowded, fragile
-    "oi_short_covering":        +1,   # OI down + price up → covering only; weaker move
-    "oi_longs_unwinding":       +3,   # OI down + price down → longs exiting; reversal confirmed
-    "oi_crowded_buildup":       +3,   # OI >15% above 20d avg → structurally crowded, sell into it
+    "oi_longs_building":        +2,   # OI up + price up → crowded longs, fragile
+    "oi_short_covering":        +1,   # OI down + price up → covering only, weaker
+    "oi_longs_unwinding":       +3,   # OI down + price down → reversal confirmed
+    "oi_crowded_buildup":       +3,   # OI >15% above avg → structurally crowded
 }
 
 HEDGE_THRESHOLDS = [
-    # Aggressive on STARTING to hedge (low triggers for 25/50%),
-    # but requires clear multi-factor confirmation for 75/100%.
-    # "Stretched conditions" = 50%. "Confirmed reversal catalyst" = 75-100%.
-    (0,  "HOLD — Let It Run",   0,  "Low"),     # Active hold signals dominate
-    (2,  "SELL 25% FORWARD",   25,  "Medium"),  # Any early warning → start locking in
-    (5,  "SELL 50% FORWARD",   50,  "Medium"),  # Multiple signals aligned → half hedged
-    (11, "SELL 75% FORWARD",   75,  "High"),    # Strong multi-factor case → protect most
-    (16, "SELL ALL FORWARD",  100,  "High"),    # All signals + reversal catalyst → full hedge
+    # Score guide (typical ranges):
+    #   Mildly stretched (RSI 60s, BB elevated):               ~4-6   → SELL 25-50%
+    #   Strong case (weekly RSI OB + DXY divergence + FII):    ~12-20 → SELL 50-75%
+    #   Reversal confirmed (above + broke support / OI crowd):  22+   → SELL 100%
+    (0,  "HOLD — Let It Run",   0,  "Low"),
+    (3,  "SELL 25% FORWARD",   25,  "Medium"),
+    (6,  "SELL 50% FORWARD",   50,  "Medium"),
+    (12, "SELL 75% FORWARD",   75,  "High"),
+    (22, "SELL ALL FORWARD",  100,  "High"),
 ]
 
 DECISION_COLORS = {
