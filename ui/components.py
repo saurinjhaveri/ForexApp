@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 from analysis.decision_engine import Decision
 from analysis.technicals import TechnicalSnapshot
+from analysis.levels import KeyLevel
 from data.price_fetcher import PriceData
 from data.macro_scraper import MacroData
 from data.rbi_scraper import RBIData
@@ -102,32 +103,41 @@ def render_technical_summary(tech: TechnicalSnapshot, futures_near: Optional[flo
     row2[3].markdown(_stat_card("Futures (Near)", near_val, basis_sub), unsafe_allow_html=True)
 
 
-def render_key_levels_table(tech: TechnicalSnapshot, levels: List[dict]) -> None:
+def render_key_levels_table(tech: TechnicalSnapshot, levels: List[KeyLevel]) -> None:
     st.subheader("Key Levels")
     spot = tech.spot
     rows = []
+    source_label = {
+        "weekly_pivot":  "Weekly Pivot",
+        "monthly_pivot": "Monthly Pivot",
+        "swing":         "Swing",
+        "round_number":  "Round Number",
+        "200dma":        "200 DMA",
+    }
+    strength_label = {1: "·", 2: "··", 3: "···"}
     for lvl in levels:
-        price = lvl["price"]
-        if price <= 0:
-            continue
-        dist_pct = (spot - price) / price * 100
-        if abs(dist_pct) < 0.5:
+        dist_pct = (spot - lvl.price) / lvl.price * 100
+        if abs(dist_pct) < 0.35:
             traffic = "🔴"
-        elif abs(dist_pct) < 2.0:
+        elif abs(dist_pct) < 1.5:
             traffic = "🟡"
         else:
             traffic = "🟢"
         direction = "▲ Above" if dist_pct > 0 else "▼ Below"
         rows.append({
             "": traffic,
-            "Level": lvl["name"],
-            "Price": f"{price:.4f}",
-            "Type": lvl.get("type", "").capitalize(),
+            "Level": lvl.name,
+            "Price": f"{lvl.price:.4f}",
+            "Type": lvl.level_type.capitalize(),
+            "Source": source_label.get(lvl.source, lvl.source),
+            "Strength": strength_label.get(lvl.strength, "·"),
             "Distance": f"{dist_pct:+.2f}%",
             "Position": direction,
         })
     if rows:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    else:
+        st.info("No key levels computed yet.")
 
 
 def render_macro_panel(price: PriceData, macro: MacroData, rbi: RBIData) -> None:

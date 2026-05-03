@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 from analysis.technicals import TechnicalSnapshot
+from analysis.levels import KeyLevel
 from data.price_fetcher import PriceData
 from data.macro_scraper import MacroData
 from data.news_fetcher import NewsItem
@@ -24,6 +25,7 @@ def generate_signals(
     brent_5d_change: Optional[float] = None,
     us_yield_5d_change: Optional[float] = None,
     usdinr_5d_change: Optional[float] = None,
+    levels: Optional[List[KeyLevel]] = None,
 ) -> List[Signal]:
     signals: List[Signal] = []
 
@@ -151,5 +153,41 @@ def generate_signals(
             add("rbi_intervention_signal",
                 f"News flag: RBI intervention signal — '{item.title[:55]}...'")
             break
+
+    # ── Key level proximity & breakout signals ────────────────────────────────────
+    if levels:
+        near_res_fired = False
+        near_sup_fired = False
+
+        for lvl in sorted(levels, key=lambda l: abs(l.price - tech.spot)):
+            dist_pct = (lvl.price - tech.spot) / tech.spot * 100
+
+            # Spot approaching resistance from below (within 0.35%)
+            if not near_res_fired and lvl.level_type == "resistance" and -0.35 <= dist_pct <= 0:
+                add("near_key_resistance",
+                    f"Spot {tech.spot:.4f} is {abs(dist_pct):.2f}% below {lvl.name} "
+                    f"resistance ({lvl.price:.4f}) — classic zone to sell forward")
+                near_res_fired = True
+
+            # Spot resting just above support (within 0.35%) — bounce expected
+            elif not near_sup_fired and lvl.level_type == "support" and 0 <= dist_pct <= 0.35:
+                add("near_key_support",
+                    f"Spot {tech.spot:.4f} is {dist_pct:.2f}% above {lvl.name} "
+                    f"support ({lvl.price:.4f}) — hold, bounce likely")
+                near_sup_fired = True
+
+        # Breakout detection using 5-day high/low range
+        if tech.high_5d and tech.low_5d:
+            for lvl in levels:
+                if lvl.level_type == "resistance" and tech.low_5d < lvl.price <= tech.spot:
+                    add("broke_above_resistance",
+                        f"Spot broke above {lvl.name} ({lvl.price:.4f}) within 5 days "
+                        f"— momentum continuation, hold for now")
+                    break
+                if lvl.level_type == "support" and tech.high_5d > lvl.price >= tech.spot:
+                    add("broke_below_support",
+                        f"Spot broke below {lvl.name} support ({lvl.price:.4f}) within 5 days "
+                        f"— INR weakness accelerating, sell forward urgently")
+                    break
 
     return signals

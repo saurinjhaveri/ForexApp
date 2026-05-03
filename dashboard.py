@@ -8,13 +8,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from config import DEFAULT_LEVELS, DB_PATH
+from config import DB_PATH
 from data.price_fetcher import fetch_price_data
 from data.nse_scraper import fetch_nse_futures
 from data.rbi_scraper import fetch_rbi_data
 from data.macro_scraper import fetch_macro_data
 from data.news_fetcher import fetch_news
 from analysis.technicals import compute_technicals
+from analysis.levels import compute_levels
 from analysis.signals import generate_signals
 from analysis.decision_engine import make_decision
 from storage.db import init_db, save_snapshot, get_history, save_decision
@@ -142,27 +143,10 @@ with st.sidebar:
     monthly_receivable_usd = st.number_input(
         "Monthly Receivables (USD)", value=500_000, step=50_000, format="%d"
     )
-    usdinr_rate_assumed = st.number_input(
-        "Assumed INR rate for budgeting", value=93.0, step=0.25
-    )
 
     st.markdown("---")
     st.markdown("**Key Levels**")
-    st.caption("Pre-filled with technically significant USD/INR levels. Edit any price to match your contracts.")
-    levels = []
-    non_dynamic = [d for d in DEFAULT_LEVELS if d["type"] != "dynamic"]
-    for i, default in enumerate(non_dynamic):
-        with st.expander(f"{default['name']}  —  {default['price']:.2f}", expanded=False):
-            name = st.text_input("Label", value=default["name"], key=f"lname_{i}")
-            price_lvl = st.number_input(
-                "Price (USD/INR)", value=float(default["price"]), step=0.25,
-                format="%.2f", key=f"lprice_{i}",
-            )
-            ltype = st.selectbox(
-                "Type", ["resistance", "support"], key=f"ltype_{i}",
-                index=0 if default["type"] == "resistance" else 1,
-            )
-        levels.append({"name": name, "price": price_lvl, "type": ltype})
+    st.caption("Auto-computed from price history: weekly/monthly pivots, swing highs/lows, round numbers, 200 DMA.")
 
     st.markdown("---")
     st.markdown("**Chart Settings**")
@@ -211,9 +195,22 @@ dxy_5d    = _5d_change(price.dxy_history)
 brent_5d  = _5d_change(price.brent_history)
 usdinr_5d = _5d_change(price.usdinr_history)
 
-# Inject dynamic 200 SMA level
-if tech.sma_200:
-    levels.append({"name": "200 DMA", "price": round(tech.sma_200, 4), "type": "dynamic"})
+# ── Compute key levels from price history ──────────────────────────────────────
+
+levels = compute_levels(price.usdinr_history, tech.spot, sma_200=tech.sma_200)
+
+# Show computed levels in sidebar
+with st.sidebar:
+    if levels:
+        rows = []
+        for lvl in levels:
+            dist_pct = (tech.spot - lvl.price) / lvl.price * 100
+            rows.append({
+                "Level": lvl.name,
+                "Price": f"{lvl.price:.4f}",
+                "Dist": f"{dist_pct:+.2f}%",
+            })
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
 # ── Decision Engine ────────────────────────────────────────────────────────────
@@ -223,8 +220,9 @@ signals = generate_signals(
     dxy_5d_change=dxy_5d,
     brent_5d_change=brent_5d,
     usdinr_5d_change=usdinr_5d,
+    levels=levels,
 )
-decision = make_decision(signals, budget_rate=usdinr_rate_assumed, spot=tech.spot)
+decision = make_decision(signals, spot=tech.spot)
 
 
 # ── Persist daily snapshot ─────────────────────────────────────────────────────

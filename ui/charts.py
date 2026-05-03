@@ -11,12 +11,13 @@ from config import TECHNICAL_PARAMS
 
 if TYPE_CHECKING:
     from analysis.technicals import TechnicalSnapshot
+    from analysis.levels import KeyLevel
 
 
 def build_usdinr_chart(
     df: pd.DataFrame,
     tech: "TechnicalSnapshot",
-    levels: List[dict],
+    levels: "List[KeyLevel]",
     lookback_months: int = 6,
 ) -> go.Figure:
     cutoff = pd.Timestamp.now() - pd.DateOffset(months=lookback_months)
@@ -81,16 +82,13 @@ def build_usdinr_chart(
     ), row=1, col=1)
 
     # Key levels (horizontal lines)
-    colors = {"resistance": "#ef4444", "support": "#22c55e", "dynamic": "#6b7280"}
+    colors = {"resistance": "#ef4444", "support": "#22c55e", "pivot": "#f59e0b"}
     for lvl in levels:
-        price = lvl["price"]
-        if price <= 0:
-            continue
-        ltype = lvl.get("type", "support")
         fig.add_hline(
-            y=price, line_dash="dash",
-            line_color=colors.get(ltype, "#6b7280"),
-            annotation_text=f"{lvl['name']} ({price:.2f})",
+            y=lvl.price, line_dash="dash",
+            line_color=colors.get(lvl.level_type, "#6b7280"),
+            line_width=1 + lvl.strength * 0.4,
+            annotation_text=f"{lvl.name} ({lvl.price:.2f})",
             annotation_position="right",
             row=1, col=1,
         )

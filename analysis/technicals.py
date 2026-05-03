@@ -22,6 +22,8 @@ class TechnicalSnapshot:
     atr_14: Optional[float] = None
     atr_90d_avg: Optional[float] = None
     atr_elevated: bool = False
+    high_5d: Optional[float] = None
+    low_5d: Optional[float] = None
 
 
 def _rsi(series: pd.Series, period: int = 14) -> float:
@@ -72,6 +74,10 @@ def compute_technicals(df: pd.DataFrame) -> TechnicalSnapshot:
     atr_now = float(atr_series.iloc[-1])
     atr_90d = float(atr_series.iloc[-p["atr_lookback_days"]:].mean())
 
+    recent5 = df.tail(5)
+    high_5d = float(recent5["High"].max()) if len(recent5) >= 1 else None
+    low_5d  = float(recent5["Low"].min())  if len(recent5) >= 1 else None
+
     return TechnicalSnapshot(
         spot=spot,
         rsi_daily=_rsi(close, p["rsi_period"]),
@@ -88,4 +94,6 @@ def compute_technicals(df: pd.DataFrame) -> TechnicalSnapshot:
         atr_14=round(atr_now, 4),
         atr_90d_avg=round(atr_90d, 4),
         atr_elevated=atr_now > atr_90d * 1.25,
+        high_5d=round(high_5d, 4) if high_5d else None,
+        low_5d=round(low_5d, 4)   if low_5d  else None,
     )

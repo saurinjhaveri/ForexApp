@@ -20,25 +20,6 @@ TECHNICAL_PARAMS = {
     "chart_lookback_months": 6,
 }
 
-DEFAULT_LEVELS = [
-    # ── Resistance: levels above spot where USD/INR tends to stall/reverse ──────
-    # RBI has historically defended ~95.20; a break higher = strong USD rally
-    {"name": "RBI Defence / ATH",  "price": 95.20, "type": "resistance"},
-    # Round-number psychological barrier; often acts as near-term cap
-    {"name": "Psych Resistance",   "price": 95.00, "type": "resistance"},
-
-    # ── Support: levels below spot where INR tends to stabilise ─────────────────
-    # Typical FY26-27 export budget rate; below this you're booking a loss
-    # vs your assumed rate — the most important level for an exporter
-    {"name": "Budget / Hedge Rate","price": 93.00, "type": "support"},
-    # Strong technical support — multiple bounces in 2024-25; break = trend change
-    {"name": "Strong Support",     "price": 91.50, "type": "support"},
-    # Major psychological floor; breach signals rupee crisis territory
-    {"name": "Danger Zone",        "price": 90.00, "type": "support"},
-
-    # ── Dynamic: computed at runtime from live price data ────────────────────────
-    {"name": "200 DMA",            "price": 0.0,   "type": "dynamic"},
-]
 
 SIGNAL_WEIGHTS = {
     # ── Exhaustion / reversal risk (positive = sell forward to lock in bonus) ────
@@ -74,6 +55,12 @@ SIGNAL_WEIGHTS = {
 
     # ── Event / intervention ──────────────────────────────────────────────────────
     "rbi_intervention_signal":  +2,   # RBI selling USD — explicit cap, don't fight it
+
+    # ── Key level proximity / breakout ────────────────────────────────────────────
+    "near_key_resistance":      +2,   # Spot within 0.35% below a resistance — classic sell zone
+    "broke_above_resistance":   -2,   # Spot just broke above resistance — momentum continuation
+    "near_key_support":         -1,   # Spot within 0.35% above a support — hold, bounce expected
+    "broke_below_support":      +3,   # Spot just broke below support — INR weakness accelerating, sell now
 }
 
 HEDGE_THRESHOLDS = [
