@@ -72,13 +72,14 @@ SIGNAL_WEIGHTS = {
 }
 
 HEDGE_THRESHOLDS = [
-    # Aggressive calibration: start selling earlier, escalate faster
-    # Neutral market (score 0) = no clear hold signals = still protect gains
-    (0,  "HOLD — Let It Run",   0,  "Low"),     # Only if active HOLD signals dominate
-    (2,  "SELL 25% FORWARD",   25,  "Medium"),  # Any two positive signals → start locking in (was 3)
-    (4,  "SELL 50% FORWARD",   50,  "Medium"),  # Moderate evidence → half exposure hedged (was 5)
-    (7,  "SELL 75% FORWARD",   75,  "High"),    # Strong signals → most of exposure protected (was 8)
-    (10, "SELL ALL FORWARD",  100,  "High"),    # All signals aligned → full hedge (was 11)
+    # Aggressive on STARTING to hedge (low triggers for 25/50%),
+    # but requires clear multi-factor confirmation for 75/100%.
+    # "Stretched conditions" = 50%. "Confirmed reversal catalyst" = 75-100%.
+    (0,  "HOLD — Let It Run",   0,  "Low"),     # Active hold signals dominate
+    (2,  "SELL 25% FORWARD",   25,  "Medium"),  # Any early warning → start locking in
+    (5,  "SELL 50% FORWARD",   50,  "Medium"),  # Multiple signals aligned → half hedged
+    (11, "SELL 75% FORWARD",   75,  "High"),    # Strong multi-factor case → protect most
+    (16, "SELL ALL FORWARD",  100,  "High"),    # All signals + reversal catalyst → full hedge
 ]
 
 DECISION_COLORS = {
