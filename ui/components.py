@@ -62,24 +62,45 @@ def render_signal_breakdown(decision: Decision) -> None:
             st.info("No active signals generated.")
 
 
+def _stat_card(label: str, value: str, sub: str = "", sub_color: str = "#94a3b8") -> str:
+    return f"""
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;
+                padding:14px 16px;height:100%;box-sizing:border-box;">
+        <div style="font-size:0.72rem;color:#94a3b8;text-transform:uppercase;
+                    letter-spacing:0.07em;margin-bottom:4px;">{label}</div>
+        <div style="font-size:1.55rem;font-weight:700;color:#f1f5f9;line-height:1.2;">{value}</div>
+        {f'<div style="font-size:0.75rem;color:{sub_color};margin-top:4px;">{sub}</div>' if sub else ''}
+    </div>"""
+
+
 def render_technical_summary(tech: TechnicalSnapshot, futures_near: Optional[float], futures_basis: Optional[float]) -> None:
     st.subheader("Spot & Technical Summary")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("USD/INR Spot", f"{tech.spot:.4f}")
-    c2.metric("RSI (14 Daily)", f"{tech.rsi_daily:.1f}" if tech.rsi_daily else "N/A")
-    c3.metric("RSI (14 Weekly)", f"{tech.rsi_weekly:.1f}" if tech.rsi_weekly else "N/A")
-    c4.metric("ATR (14)", f"{tech.atr_14:.4f}" if tech.atr_14 else "N/A",
-              delta=f"90d avg: {tech.atr_90d_avg:.4f}" if tech.atr_90d_avg else None)
 
-    c5, c6, c7, c8 = st.columns(4)
-    c5.metric("SMA 50", f"{tech.sma_50:.4f}" if tech.sma_50 else "N/A",
-              delta=f"{tech.pct_above_sma50:+.2f}%" if tech.pct_above_sma50 else None)
-    c6.metric("SMA 200", f"{tech.sma_200:.4f}" if tech.sma_200 else "N/A",
-              delta=f"{tech.pct_above_sma200:+.2f}%" if tech.pct_above_sma200 else None)
-    c7.metric("BB %B", f"{tech.bb_pct_b*100:.1f}%" if tech.bb_pct_b is not None else "N/A")
-    near_label = f"{futures_near:.4f}" if futures_near else "N/A"
-    basis_label = f"Basis: {futures_basis:+.4f}" if futures_basis else None
-    c8.metric("Futures (Near)", near_label, delta=basis_label)
+    rsi_d = f"{tech.rsi_daily:.1f}" if tech.rsi_daily else "N/A"
+    rsi_d_color = "#ef4444" if (tech.rsi_daily or 0) > 70 else ("#22c55e" if (tech.rsi_daily or 100) < 30 else "#f59e0b")
+    rsi_w = f"{tech.rsi_weekly:.1f}" if tech.rsi_weekly else "N/A"
+    atr_sub = f"90d avg: {tech.atr_90d_avg:.4f}" if tech.atr_90d_avg else ""
+    atr_color = "#ef4444" if tech.atr_elevated else "#94a3b8"
+
+    sma50_sub = f"{tech.pct_above_sma50:+.2f}% vs spot" if tech.pct_above_sma50 is not None else ""
+    sma200_sub = f"{tech.pct_above_sma200:+.2f}% vs spot" if tech.pct_above_sma200 is not None else ""
+    bb_pct = f"{tech.bb_pct_b*100:.1f}%" if tech.bb_pct_b is not None else "N/A"
+    bb_color = "#ef4444" if (tech.bb_pct_b or 0) > 0.85 else ("#22c55e" if (tech.bb_pct_b or 1) < 0.15 else "#94a3b8")
+    near_val = f"{futures_near:.4f}" if futures_near else "N/A"
+    basis_sub = f"Basis vs spot: {futures_basis:+.4f}" if futures_basis else ""
+
+    row1 = st.columns(4)
+    row1[0].markdown(_stat_card("USD/INR Spot", f"{tech.spot:.4f}"), unsafe_allow_html=True)
+    row1[1].markdown(_stat_card("RSI (14 Daily)", rsi_d, sub_color=rsi_d_color), unsafe_allow_html=True)
+    row1[2].markdown(_stat_card("RSI (14 Weekly)", rsi_w), unsafe_allow_html=True)
+    row1[3].markdown(_stat_card("ATR (14)", f"{tech.atr_14:.4f}" if tech.atr_14 else "N/A", atr_sub, atr_color), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    row2 = st.columns(4)
+    row2[0].markdown(_stat_card("SMA 50", f"{tech.sma_50:.4f}" if tech.sma_50 else "N/A", sma50_sub), unsafe_allow_html=True)
+    row2[1].markdown(_stat_card("SMA 200", f"{tech.sma_200:.4f}" if tech.sma_200 else "N/A", sma200_sub), unsafe_allow_html=True)
+    row2[2].markdown(_stat_card("BB %B", bb_pct, sub_color=bb_color), unsafe_allow_html=True)
+    row2[3].markdown(_stat_card("Futures (Near)", near_val, basis_sub), unsafe_allow_html=True)
 
 
 def render_key_levels_table(tech: TechnicalSnapshot, levels: List[dict]) -> None:

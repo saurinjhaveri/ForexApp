@@ -38,11 +38,98 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    .stApp { background-color: #0f172a; color: #e2e8f0; }
-    .stMetric { background: #1e293b; border-radius: 8px; padding: 8px; }
-    [data-testid="stSidebar"] { background-color: #1e293b; }
+    /* ── Base ───────────────────────────────────────────────── */
+    .stApp { background-color: #0f172a !important; }
+    .stApp, .stApp p, .stApp span, .stApp div,
+    .stApp label, .stApp li { color: #e2e8f0 !important; }
+    [data-testid="stAppViewContainer"] { background-color: #0f172a !important; }
+    [data-testid="stHeader"] { background-color: #0f172a !important; }
+
+    /* ── Headings ───────────────────────────────────────────── */
+    h1, h2, h3, h4, h5, h6 { color: #f1f5f9 !important; }
+
+    /* ── Sidebar ────────────────────────────────────────────── */
+    [data-testid="stSidebar"] { background-color: #1e293b !important; }
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] div { color: #e2e8f0 !important; }
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] textarea {
+        background-color: #0f172a !important;
+        color: #f1f5f9 !important;
+        border-color: #475569 !important;
+    }
+    [data-testid="stSidebar"] .stSelectbox > div > div {
+        background-color: #0f172a !important;
+        color: #f1f5f9 !important;
+        border-color: #475569 !important;
+    }
+
+    /* ── Metric cards ───────────────────────────────────────── */
+    [data-testid="stMetric"] {
+        background: #1e293b !important;
+        border-radius: 10px !important;
+        padding: 14px 16px !important;
+        border: 1px solid #334155 !important;
+    }
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricLabel"] p { color: #94a3b8 !important; font-size: 0.78rem !important; }
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricValue"] div { color: #f1f5f9 !important; font-size: 1.6rem !important; font-weight: 700 !important; }
+    [data-testid="stMetricDelta"] { font-size: 0.78rem !important; }
+
+    /* ── Inputs (main area) ─────────────────────────────────── */
+    .stTextInput input, .stNumberInput input, .stTextArea textarea {
+        background-color: #1e293b !important;
+        color: #f1f5f9 !important;
+        border-color: #475569 !important;
+    }
+    .stTextInput label, .stNumberInput label,
+    .stTextArea label, .stSelectbox label,
+    .stSlider label { color: #94a3b8 !important; }
+
+    /* ── Selectbox dropdown ─────────────────────────────────── */
+    .stSelectbox > div > div {
+        background-color: #1e293b !important;
+        color: #f1f5f9 !important;
+        border-color: #475569 !important;
+    }
+
+    /* ── Buttons ────────────────────────────────────────────── */
+    .stButton > button {
+        background-color: #334155 !important;
+        color: #f1f5f9 !important;
+        border-color: #475569 !important;
+    }
+    .stButton > button:hover { background-color: #475569 !important; }
+
+    /* ── DataFrames ─────────────────────────────────────────── */
     .stDataFrame { font-size: 0.85rem; }
-    h1, h2, h3 { color: #f1f5f9; }
+    [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
+        color: #e2e8f0 !important;
+        background-color: #1e293b !important;
+    }
+
+    /* ── Expander ───────────────────────────────────────────── */
+    [data-testid="stExpander"] {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    [data-testid="stExpander"] summary { color: #e2e8f0 !important; }
+
+    /* ── Alert / Info boxes ─────────────────────────────────── */
+    [data-testid="stAlert"] { background-color: #1e3a5f !important; border-color: #3b82f6 !important; }
+    [data-testid="stAlert"] p { color: #bfdbfe !important; }
+
+    /* ── Caption / small text ───────────────────────────────── */
+    .stCaption, [data-testid="stCaptionContainer"] p { color: #64748b !important; }
+
+    /* ── Divider ────────────────────────────────────────────── */
+    hr { border-color: #334155 !important; }
+
+    /* ── Slider ─────────────────────────────────────────────── */
+    [data-testid="stSlider"] p { color: #94a3b8 !important; }
 </style>
 """, unsafe_allow_html=True)
 
