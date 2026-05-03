@@ -18,7 +18,7 @@ from analysis.technicals import compute_technicals
 from analysis.levels import compute_levels
 from analysis.signals import generate_signals
 from analysis.decision_engine import make_decision
-from storage.db import init_db, save_snapshot, get_history, save_decision, get_oi_history
+from storage.db import init_db, save_snapshot, get_history, save_decision, get_oi_history, get_premium_history
 from ui.charts import build_usdinr_chart
 from ui.components import (
     render_decision_box,
@@ -28,6 +28,7 @@ from ui.components import (
     render_macro_panel,
     render_news_panel,
     render_history_table,
+    render_scenario_table,
 )
 
 st.set_page_config(
@@ -149,6 +150,12 @@ with st.sidebar:
     st.caption("Auto-computed from price history: weekly/monthly pivots, swing highs/lows, 200 DMA.")
 
     st.markdown("---")
+    st.markdown("**Scenario Settings**")
+    st.caption("Asymmetric by default: RBI caps upside, no floor on downside.")
+    scenario_bear_pct = st.slider("Bear scenario (INR strengthens %)", 1.0, 5.0, 3.0, step=0.5)
+    scenario_bull_pct = st.slider("Bull scenario (INR weakens %)",     0.5, 3.0, 1.5, step=0.5)
+
+    st.markdown("---")
     st.markdown("**Chart Settings**")
     lookback_months = st.slider("Chart lookback (months)", 1, 24, 6)
 
@@ -195,6 +202,46 @@ dxy_5d    = _5d_change(price.dxy_history)
 brent_5d  = _5d_change(price.brent_history)
 usdinr_5d = _5d_change(price.usdinr_history)
 
+# ── EM basket divergence ───────────────────────────────────────────────────────
+em_changes = [
+    c for c in [
+        _5d_change(price.usdbrl_history),
+        _5d_change(price.usdzar_history),
+        _5d_change(price.usdidr_history),
+    ] if c is not None
+]
+em_basket_5d     = sum(em_changes) / len(em_changes) if em_changes else None
+inr_em_divergence = (
+    (usdinr_5d - em_basket_5d) if usdinr_5d is not None and em_basket_5d is not None
+    else None
+)
+
+# ── Forward premium percentile rank ───────────────────────────────────────────
+init_db()
+premium_history = [x for x in get_premium_history(90) if x is not None]
+forward_premium_pctile_rank: Optional[float] = None
+if len(premium_history) >= 10 and futures.annualized_premium_pct is not None:
+    below = sum(1 for p in premium_history if p <= futures.annualized_premium_pct)
+    forward_premium_pctile_rank = below / len(premium_history) * 100
+
+# ── FX reserves 7-day change ──────────────────────────────────────────────────
+reserves_7d_change: Optional[float] = None
+hist_7d = get_history(n=7)
+if len(hist_7d) >= 2:
+    newest = next((r["raw_json"] for r in hist_7d if r.get("raw_json")), None)
+    oldest = next((r["raw_json"] for r in reversed(hist_7d) if r.get("raw_json")), None)
+    try:
+        if newest and oldest:
+            import json as _json
+            r_new = _json.loads(newest).get("macro", {})
+            r_old = _json.loads(oldest).get("macro", {})
+            fx_new = r_new.get("fx_reserves_usd_bn") or rbi.fx_reserves_usd_bn
+            fx_old = r_old.get("fx_reserves_usd_bn")
+            if fx_new and fx_old:
+                reserves_7d_change = fx_new - fx_old
+    except Exception:
+        pass
+
 # ── Compute key levels from price history ──────────────────────────────────────
 
 try:
@@ -237,8 +284,11 @@ signals = generate_signals(
     levels=levels,
     futures=futures,
     oi_pct_above_avg=oi_pct_above_avg,
+    inr_em_divergence=inr_em_divergence,
+    forward_premium_pctile_rank=forward_premium_pctile_rank,
+    reserves_7d_change=reserves_7d_change,
 )
-decision = make_decision(signals, spot=tech.spot)
+decision = make_decision(signals, spot=tech.spot, levels=levels, inr_em_divergence=inr_em_divergence)
 
 
 # ── Persist daily snapshot ─────────────────────────────────────────────────────
@@ -256,7 +306,8 @@ snapshot = {
     "confidence":     decision.confidence,
     "rationale":      decision.rationale,
     "score":          decision.score,
-    "near_month_oi":  futures.near_month_oi,
+    "near_month_oi":      futures.near_month_oi,
+    "forward_premium_ann": futures.annualized_premium_pct,
     "raw_json":       json.dumps({
         "tech":    vars(tech),
         "futures": vars(futures),
@@ -276,17 +327,15 @@ st.caption(f"For exporters with USD receivables — {datetime.now().strftime('%A
 render_decision_box(decision, tech.spot)
 render_signal_breakdown(decision)
 
-# Exposure context
+# Exposure + scenario table
 if monthly_receivable_usd:
-    spot_now = tech.spot or 94.0
-    hedged_usd = monthly_receivable_usd * decision.hedge_ratio / 100
-    unhedged_usd = monthly_receivable_usd - hedged_usd
-    downside_3pct = unhedged_usd * spot_now * 0.03
-    st.info(
-        f"**Exposure:** USD {monthly_receivable_usd:,.0f} monthly receivables — "
-        f"at {decision.hedge_ratio}% sold forward: "
-        f"USD {hedged_usd:,.0f} locked · USD {unhedged_usd:,.0f} open. "
-        f"A 3% adverse INR move on the open portion = **₹{downside_3pct:,.0f} impact**."
+    render_scenario_table(
+        monthly_receivable_usd=monthly_receivable_usd,
+        hedge_ratio=decision.hedge_ratio,
+        spot=tech.spot or 84.0,
+        bear_pct=scenario_bear_pct,
+        bull_pct=scenario_bull_pct,
+        forward_rate=futures.near_month_price,
     )
 
 st.divider()
@@ -299,6 +348,10 @@ render_technical_summary(
     futures_oi=futures.near_month_oi,
     futures_oi_change=futures.near_month_oi_change,
     oi_pct_above_avg=oi_pct_above_avg,
+    annualized_premium=futures.annualized_premium_pct,
+    forward_premium_pctile=forward_premium_pctile_rank,
+    inr_em_divergence=inr_em_divergence,
+    em_basket_5d=em_basket_5d,
 )
 st.plotly_chart(
     build_usdinr_chart(price.usdinr_history, tech, levels, lookback_months),

@@ -7,6 +7,10 @@ TICKERS = {
     "us_10y": "^TNX",
     "nifty": "^NSEI",
     "us_vix": "^VIX",
+    # EM basket for relative INR divergence
+    "usdbrl": "BRL=X",
+    "usdzar": "ZAR=X",
+    "usdidr": "IDR=X",
 }
 
 TECHNICAL_PARAMS = {
@@ -53,6 +57,17 @@ SIGNAL_WEIGHTS = {
     "usdinr_momentum_fading":   +2,   # Momentum fading — hedge before reversal confirmed
     "usdinr_momentum_negative": +3,   # Reversal already underway — act now
 
+    # ── EM basket relative divergence ────────────────────────────────────────────
+    # If INR underperforms EM peers, the weakness is India-specific — snaps back faster
+    "inr_em_divergence_strong": +3,   # INR weaker than EM basket >0.5% in 5d — India-specific weakness
+    "inr_em_outperforming":     -1,   # INR outperforming EM basket — broad USD move, not India-specific
+
+    # ── Forward premium / carry ───────────────────────────────────────────────────
+    # Exporter EARNS the premium — high premium = better forward rate = MORE reason to hedge
+    "forward_premium_extreme":      +3,   # Annualized premium >90th pctile of 90d history — market screaming INR weakness
+    "forward_premium_high_pctile":  +2,   # Premium >75th pctile — above-average carry confirms hedging attractive
+    "forward_premium_collapsed":    -1,   # Premium near zero / below 25th pctile — carry benefit thin; less urgency
+
     # ── India macro ───────────────────────────────────────────────────────────────
     "oil_falling":              +1,   # Oil down → INR can strengthen
     "oil_rising":               -1,   # Oil up → USD/INR stays bid
@@ -61,8 +76,11 @@ SIGNAL_WEIGHTS = {
     "us_yield_falling":         +1,   # US yields down — USD softening
     "us_yield_rising":          -1,   # US yields up — USD supported
 
-    # ── Event / intervention ──────────────────────────────────────────────────────
-    "rbi_intervention_signal":  +3,   # RBI selling USD — explicit cap; high-conviction
+    # ── RBI intervention ─────────────────────────────────────────────────────────
+    "rbi_intervention_signal":  +3,   # RBI selling USD (news-based) — explicit cap; high-conviction
+    "rbi_intervention_zone":    +2,   # Spot in known RBI intervention zone (94.50–95.00) — defence expected
+    "rbi_intervention_active":  +4,   # Spot above 95.00 — RBI historically defends hard; reversal imminent
+    "fx_reserves_falling_confirmed": +2,  # Reserves falling AND INR underperforming EM — confirmed deployment
 
     # ── Key level proximity / breakout ────────────────────────────────────────────
     "near_key_resistance":      +2,   # Approaching resistance — sell zone

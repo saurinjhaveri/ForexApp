@@ -10,9 +10,25 @@ from data.rbi_scraper import RBIData
 from data.news_fetcher import NewsItem
 
 
+_REGIME_STYLE = {
+    "mean_reversion": ("#fef3c7", "#92400e", "↩ Mean-Reversion Regime"),
+    "trend":          ("#dbeafe", "#1e40af", "→ Trend Regime"),
+    "neutral":        ("#1e293b", "#94a3b8", "◈ Neutral Regime"),
+}
+
+
 def render_decision_box(decision: Decision, spot: Optional[float], budget_rate: Optional[float] = None) -> None:
     color = decision.color
     confidence_color = {"High": "#ef4444", "Medium": "#f59e0b", "Low": "#94a3b8"}.get(decision.confidence, "#94a3b8")
+
+    # ── Regime badge ──────────────────────────────────────────────────────────────
+    reg_bg, reg_fg, reg_label = _REGIME_STYLE.get(decision.regime, _REGIME_STYLE["neutral"])
+    st.markdown(
+        f"<div style='display:inline-block; padding:3px 10px; background:{reg_bg}; "
+        f"color:{reg_fg}; border-radius:12px; font-size:0.72rem; font-weight:700; "
+        f"letter-spacing:0.06em; margin-bottom:10px;'>{reg_label}</div>",
+        unsafe_allow_html=True,
+    )
 
     # ── Top bar: action + quantity ────────────────────────────────────────────────
     left, right = st.columns([3, 1])
@@ -49,6 +65,16 @@ def render_decision_box(decision: Decision, spot: Optional[float], budget_rate: 
                 unsafe_allow_html=True,
             )
 
+    # ── Tranche trigger ───────────────────────────────────────────────────────────
+    if decision.tranche_trigger:
+        st.markdown(
+            f"<div style='margin-top:10px; padding:8px 14px; background:rgba(99,102,241,0.08); "
+            f"border-left:3px solid #6366f1; border-radius:5px; "
+            f"font-size:0.82rem; color:#a5b4fc;'>"
+            f"⟳ Next tranche: {decision.tranche_trigger}</div>",
+            unsafe_allow_html=True,
+        )
+
 
 def render_signal_breakdown(decision: Decision) -> None:
     with st.expander("Signal Breakdown", expanded=False):
@@ -80,6 +106,10 @@ def render_technical_summary(
     futures_oi: Optional[float] = None,
     futures_oi_change: Optional[float] = None,
     oi_pct_above_avg: Optional[float] = None,
+    annualized_premium: Optional[float] = None,
+    forward_premium_pctile: Optional[float] = None,
+    inr_em_divergence: Optional[float] = None,
+    em_basket_5d: Optional[float] = None,
 ) -> None:
     st.subheader("Spot & Technical Summary")
 
@@ -125,6 +155,31 @@ def render_technical_summary(
         oi_signal = "Longs Building 🔴" if (futures_oi_change or 0) > 0 else ("Covering 🟡" if (futures_oi_change or 0) < 0 else "—")
         row3[2].markdown(_stat_card("OI Signal", oi_signal), unsafe_allow_html=True)
         row3[3].markdown(_stat_card("OI Crowded?", "YES 🔴" if (oi_pct_above_avg or 0) > 15 else "No 🟢"), unsafe_allow_html=True)
+
+    # ── EM divergence + forward premium row ───────────────────────────────────────
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    row4 = st.columns(4)
+
+    # EM divergence card
+    if inr_em_divergence is not None:
+        em_sign = "+" if inr_em_divergence > 0 else ""
+        em_color = "#ef4444" if inr_em_divergence > 0.5 else ("#22c55e" if inr_em_divergence < -0.5 else "#94a3b8")
+        em_label = "India-specific 🔴" if inr_em_divergence > 0.5 else ("Global USD 🟡" if inr_em_divergence < -0.5 else "In-line with EM")
+        em_sub = f"EM basket 5d: {em_basket_5d:+.2f}%" if em_basket_5d is not None else ""
+        row4[0].markdown(_stat_card("INR vs EM Basket", f"{em_sign}{inr_em_divergence:.2f}%", f"{em_sub} · {em_label}", em_color), unsafe_allow_html=True)
+    else:
+        row4[0].markdown(_stat_card("INR vs EM Basket", "N/A", "BRL/ZAR/IDR basket"), unsafe_allow_html=True)
+
+    # Forward premium card
+    if annualized_premium is not None:
+        pctile_str = f"{forward_premium_pctile:.0f}th pctile (90d)" if forward_premium_pctile is not None else ""
+        prem_color = "#ef4444" if (forward_premium_pctile or 0) >= 90 else ("#f59e0b" if (forward_premium_pctile or 0) >= 75 else ("#22c55e" if (forward_premium_pctile or 0) <= 25 else "#94a3b8"))
+        row4[1].markdown(_stat_card("Fwd Premium (Ann.)", f"{annualized_premium:.1f}%", pctile_str, prem_color), unsafe_allow_html=True)
+    else:
+        row4[1].markdown(_stat_card("Fwd Premium (Ann.)", "N/A", "Requires futures data"), unsafe_allow_html=True)
+
+    row4[2].markdown("", unsafe_allow_html=True)
+    row4[3].markdown("", unsafe_allow_html=True)
 
 
 def render_key_levels_table(tech: TechnicalSnapshot, levels: List[KeyLevel]) -> None:
@@ -203,6 +258,51 @@ def render_news_panel(news: List[NewsItem]) -> None:
         tags = " ".join(f"`{kw}`" for kw in item.matched_keywords) if item.flagged else ""
         st.markdown(f"**{prefix}[{item.title}]({item.url})**  {tags}  \n*{item.published}*")
         st.divider()
+
+
+def render_scenario_table(
+    monthly_receivable_usd: float,
+    hedge_ratio: int,
+    spot: float,
+    bear_pct: float = 3.0,
+    bull_pct: float = 1.5,
+    forward_rate: Optional[float] = None,
+) -> None:
+    """
+    Asymmetric P&L scenario table.
+    Bear = INR strengthens (bad for exporter's unhedged portion).
+    Bull = INR weakens (good for unhedged, but historically capped by RBI).
+    Hedged portion always locks in forward_rate (or spot if unavailable).
+    """
+    lock_rate    = forward_rate or spot
+    hedged_usd   = monthly_receivable_usd * hedge_ratio / 100
+    unhedged_usd = monthly_receivable_usd - hedged_usd
+    hedged_inr   = hedged_usd * lock_rate
+
+    scenarios = [
+        ("🐻 Bear (INR strengthens)", spot * (1 - bear_pct / 100), "#22c55e"),
+        ("◈ Base (no change)",        spot,                         "#94a3b8"),
+        ("🐂 Bull (INR weakens)",     spot * (1 + bull_pct / 100),  "#ef4444"),
+    ]
+
+    base_total = hedged_inr + unhedged_usd * spot
+    rows = []
+    for label, rate, _ in scenarios:
+        total_inr  = hedged_inr + unhedged_usd * rate
+        vs_base    = total_inr - base_total
+        vs_base_pct = vs_base / base_total * 100 if base_total else 0
+        rows.append({
+            "Scenario":          label,
+            "USD/INR Rate":      f"{rate:.4f}",
+            "INR Received (₹)":  f"₹{total_inr:,.0f}",
+            "vs Base (₹)":       f"{'+' if vs_base >= 0 else ''}{vs_base:,.0f}",
+            "vs Base (%)":       f"{'+' if vs_base_pct >= 0 else ''}{vs_base_pct:.1f}%",
+        })
+
+    st.subheader("Exposure & Scenario Analysis")
+    lock_note = f"Hedged {hedge_ratio}% at ₹{lock_rate:.4f} forward · Unhedged: USD {unhedged_usd:,.0f} open"
+    st.caption(lock_note)
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
 def render_history_table(history: List[dict]) -> None:

@@ -18,6 +18,9 @@ class PriceData:
     usdinr_history: pd.DataFrame = field(default_factory=pd.DataFrame)
     dxy_history: pd.DataFrame = field(default_factory=pd.DataFrame)
     brent_history: pd.DataFrame = field(default_factory=pd.DataFrame)
+    usdbrl_history: pd.DataFrame = field(default_factory=pd.DataFrame)
+    usdzar_history: pd.DataFrame = field(default_factory=pd.DataFrame)
+    usdidr_history: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def _safe_price(ticker_obj) -> Optional[float]:
@@ -55,6 +58,9 @@ def fetch_price_data() -> PriceData:
         ("_us10y",  TICKERS["us_10y"]),
         ("_nifty",  TICKERS["nifty"]),
         ("_usvix",  TICKERS["us_vix"]),
+        ("_usdbrl", TICKERS["usdbrl"]),
+        ("_usdzar", TICKERS["usdzar"]),
+        ("_usdidr", TICKERS["usdidr"]),
     ]:
         t = yf.Ticker(sym)
         if attr == "_usdinr":
@@ -76,4 +82,10 @@ def fetch_price_data() -> PriceData:
             result.nifty = _safe_price(t)
         elif attr == "_usvix":
             result.us_vix = _safe_price(t)
+        elif attr == "_usdbrl":
+            result.usdbrl_history = _safe_history(t, "1y")
+        elif attr == "_usdzar":
+            result.usdzar_history = _safe_history(t, "1y")
+        elif attr == "_usdidr":
+            result.usdidr_history = _safe_history(t, "1y")
     return result

@@ -19,17 +19,24 @@ def make_mock_ticker(current_price: float, hist_rows: int = 260):
     }, index=dates)
     return ticker
 
-def test_fetch_price_data_returns_price_data():
-    mock_tickers = {
-        "INR=X": make_mock_ticker(94.95),
+def _base_mock_tickers():
+    return {
+        "INR=X":    make_mock_ticker(94.95),
         "DX-Y.NYB": make_mock_ticker(104.2),
         "EURUSD=X": make_mock_ticker(1.082),
-        "BZ=F": make_mock_ticker(82.5),
-        "CL=F": make_mock_ticker(78.3),
-        "^TNX": make_mock_ticker(4.35),
-        "^NSEI": make_mock_ticker(22500.0),
-        "^VIX": make_mock_ticker(17.5),
+        "BZ=F":     make_mock_ticker(82.5),
+        "CL=F":     make_mock_ticker(78.3),
+        "^TNX":     make_mock_ticker(4.35),
+        "^NSEI":    make_mock_ticker(22500.0),
+        "^VIX":     make_mock_ticker(17.5),
+        # EM basket
+        "BRL=X":    make_mock_ticker(5.1),
+        "ZAR=X":    make_mock_ticker(18.5),
+        "IDR=X":    make_mock_ticker(15800.0),
     }
+
+def test_fetch_price_data_returns_price_data():
+    mock_tickers = _base_mock_tickers()
     with patch("data.price_fetcher.yf.Ticker", side_effect=lambda sym: mock_tickers[sym]):
         result = fetch_price_data()
     assert isinstance(result, PriceData)
@@ -37,18 +44,12 @@ def test_fetch_price_data_returns_price_data():
     assert result.dxy == pytest.approx(104.2)
     assert len(result.usdinr_history) >= 250
     assert "Close" in result.usdinr_history.columns
+    assert not result.usdbrl_history.empty
+    assert not result.usdzar_history.empty
+    assert not result.usdidr_history.empty
 
 def test_fetch_price_data_handles_missing_ticker():
-    mock_tickers = {
-        "INR=X": make_mock_ticker(94.95),
-        "DX-Y.NYB": make_mock_ticker(104.2),
-        "EURUSD=X": make_mock_ticker(1.082),
-        "BZ=F": make_mock_ticker(82.5),
-        "CL=F": make_mock_ticker(78.3),
-        "^TNX": make_mock_ticker(4.35),
-        "^NSEI": make_mock_ticker(22500.0),
-        "^VIX": make_mock_ticker(17.5),
-    }
+    mock_tickers = _base_mock_tickers()
     broken = MagicMock()
     broken.info = {}
     broken.history.return_value = pd.DataFrame()

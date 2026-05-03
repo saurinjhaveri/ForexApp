@@ -35,12 +35,12 @@ def init_db(db_path: str = None) -> None:
         );
         CREATE UNIQUE INDEX IF NOT EXISTS idx_snapshots_date ON snapshots(date);
     """)
-    # Migrate existing DBs that pre-date the near_month_oi column
-    try:
-        conn.execute("ALTER TABLE snapshots ADD COLUMN near_month_oi REAL")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass  # Column already exists
+    for col in ["near_month_oi REAL", "forward_premium_ann REAL"]:
+        try:
+            conn.execute(f"ALTER TABLE snapshots ADD COLUMN {col}")
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Column already exists
     conn.close()
 
 
@@ -48,15 +48,20 @@ def save_snapshot(snapshot: Dict[str, Any], db_path: str = None) -> None:
     if db_path is None:
         db_path = DB_PATH
     init_db(db_path)
-    row = {**snapshot, "near_month_oi": snapshot.get("near_month_oi")}
+    row = {
+        **snapshot,
+        "near_month_oi": snapshot.get("near_month_oi"),
+        "forward_premium_ann": snapshot.get("forward_premium_ann"),
+    }
     conn = sqlite3.connect(db_path)
     conn.execute("""
         INSERT OR REPLACE INTO snapshots
             (date, usdinr_spot, rsi_daily, dxy, brent, recommendation,
-             hedge_ratio, confidence, rationale, score, raw_json, near_month_oi)
+             hedge_ratio, confidence, rationale, score, raw_json,
+             near_month_oi, forward_premium_ann)
         VALUES (:date, :usdinr_spot, :rsi_daily, :dxy, :brent, :recommendation,
                 :hedge_ratio, :confidence, :rationale, :score, :raw_json,
-                :near_month_oi)
+                :near_month_oi, :forward_premium_ann)
     """, row)
     conn.commit()
     conn.close()
@@ -83,6 +88,19 @@ def get_oi_history(n: int = 20, db_path: str = None) -> List[Optional[float]]:
     conn = sqlite3.connect(db_path)
     rows = conn.execute(
         "SELECT near_month_oi FROM snapshots ORDER BY date DESC LIMIT ?", (n,)
+    ).fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
+def get_premium_history(n: int = 90, db_path: str = None) -> List[Optional[float]]:
+    """Return last n days of annualized forward premium, most recent first. None where not recorded."""
+    if db_path is None:
+        db_path = DB_PATH
+    init_db(db_path)
+    conn = sqlite3.connect(db_path)
+    rows = conn.execute(
+        "SELECT forward_premium_ann FROM snapshots ORDER BY date DESC LIMIT ?", (n,)
     ).fetchall()
     conn.close()
     return [r[0] for r in rows]

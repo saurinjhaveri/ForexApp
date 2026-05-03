@@ -9,10 +9,11 @@ class FuturesData:
     near_month_expiry: Optional[str] = None
     next_month_price: Optional[float] = None
     next_month_expiry: Optional[str] = None
-    near_month_basis: Optional[float] = None       # futures - spot
-    near_month_oi: Optional[float] = None          # open interest (contracts)
-    near_month_oi_change: Optional[float] = None   # change from prev session
+    near_month_basis: Optional[float] = None           # futures - spot
+    near_month_oi: Optional[float] = None              # open interest (contracts)
+    near_month_oi_change: Optional[float] = None       # change from prev session
     near_month_oi_change_pct: Optional[float] = None
+    annualized_premium_pct: Optional[float] = None     # (basis/spot) × (365/dte) × 100
     error: Optional[str] = None
 
 
@@ -60,6 +61,14 @@ def fetch_nse_futures(spot_price: Optional[float] = None) -> FuturesData:
 
             if spot_price and result.near_month_price:
                 result.near_month_basis = round(result.near_month_price - spot_price, 4)
+                try:
+                    expiry_dt = datetime.strptime(result.near_month_expiry, "%d-%b-%Y")
+                    dte = max((expiry_dt - datetime.now()).days, 1)
+                    result.annualized_premium_pct = round(
+                        (result.near_month_basis / spot_price) * (365 / dte) * 100, 2
+                    )
+                except Exception:
+                    pass
 
         if len(futures) >= 2:
             nxt = futures[1]

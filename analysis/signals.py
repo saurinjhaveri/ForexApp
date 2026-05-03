@@ -29,6 +29,9 @@ def generate_signals(
     levels: Optional[List[KeyLevel]] = None,
     futures: Optional[FuturesData] = None,
     oi_pct_above_avg: Optional[float] = None,
+    inr_em_divergence: Optional[float] = None,
+    forward_premium_pctile_rank: Optional[float] = None,
+    reserves_7d_change: Optional[float] = None,
 ) -> List[Signal]:
     signals: List[Signal] = []
 
@@ -122,6 +125,59 @@ def generate_signals(
         elif usdinr_5d_change < 0:
             add("usdinr_momentum_negative",
                 f"USD/INR 5d change = {usdinr_5d_change:+.2f}% — reversal already underway")
+
+    # ── EM basket relative divergence ────────────────────────────────────────────
+    # inr_em_divergence = usdinr_5d_change - em_basket_5d_avg
+    # Positive = INR weaker than EM peers → India-specific weakness (higher conviction to sell)
+    if inr_em_divergence is not None:
+        if inr_em_divergence > 0.5:
+            add("inr_em_divergence_strong",
+                f"INR is underperforming EM peers by {inr_em_divergence:+.2f}% (5d) — "
+                f"weakness is India-specific, not dollar-driven; historically snaps back faster. "
+                f"Highest-conviction signal to lock in the forward rate now.")
+        elif inr_em_divergence < -0.5:
+            add("inr_em_outperforming",
+                f"INR outperforming EM basket by {abs(inr_em_divergence):.2f}% (5d) — "
+                f"USD/INR move is part of broad EM dollar strength, not India-specific. "
+                f"Lower urgency to hedge; wait for EM trend to confirm.")
+
+    # ── Forward premium / carry ───────────────────────────────────────────────────
+    # For exporters: high premium = better forward rate locked in = MORE reason to hedge
+    if forward_premium_pctile_rank is not None and futures and futures.annualized_premium_pct is not None:
+        ann = futures.annualized_premium_pct
+        if forward_premium_pctile_rank >= 90:
+            add("forward_premium_extreme",
+                f"Annualized forward premium = {ann:.1f}% (>90th pctile of 90d history) — "
+                f"market is pricing aggressive INR depreciation; you lock in an exceptional carry benefit by hedging now.")
+        elif forward_premium_pctile_rank >= 75:
+            add("forward_premium_high_pctile",
+                f"Annualized forward premium = {ann:.1f}% (>75th pctile of 90d history) — "
+                f"above-average carry; favorable time to sell forward.")
+        elif forward_premium_pctile_rank <= 25:
+            add("forward_premium_collapsed",
+                f"Annualized forward premium = {ann:.1f}% (<25th pctile of 90d history) — "
+                f"carry benefit is thin; the market is not pricing much INR weakness. "
+                f"Reduce hedging urgency unless technical signals are strong.")
+
+    # ── RBI intervention zones ────────────────────────────────────────────────────
+    if tech.spot >= 95.0:
+        add("rbi_intervention_active",
+            f"Spot {tech.spot:.4f} — above 95.00, historically the hardest RBI defence level. "
+            f"Intervention is near-certain; INR reversal risk is very high. Sell forward urgently.")
+    elif tech.spot >= 94.5:
+        add("rbi_intervention_zone",
+            f"Spot {tech.spot:.4f} — entering RBI's known intervention zone (94.50–95.00). "
+            f"RBI has historically defended these levels; expect USD selling pressure.")
+
+    # ── FX reserves confirmation (gated on EM divergence) ────────────────────────
+    # Reserves falling alone can be valuation noise. Only signal if INR is also
+    # underperforming EM peers — that combination indicates active RBI deployment.
+    if (reserves_7d_change is not None and reserves_7d_change < -2.0
+            and inr_em_divergence is not None and inr_em_divergence > 0.3):
+        add("fx_reserves_falling_confirmed",
+            f"FX reserves fell USD {abs(reserves_7d_change):.1f}bn in 7 days AND INR is "
+            f"underperforming EM basket — RBI is actively deploying reserves to cap INR weakness; "
+            f"reversal likely once intervention is complete.")
 
     # ── Oil ───────────────────────────────────────────────────────────────────────
     if brent_5d_change is not None:
