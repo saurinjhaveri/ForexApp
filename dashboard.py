@@ -18,7 +18,7 @@ from analysis.technicals import compute_technicals
 from analysis.levels import compute_levels
 from analysis.signals import generate_signals
 from analysis.decision_engine import make_decision
-from storage.db import init_db, save_snapshot, get_history, save_decision
+from storage.db import init_db, save_snapshot, get_history, save_decision, get_oi_history
 from ui.charts import build_usdinr_chart
 from ui.components import (
     render_decision_box,
@@ -216,6 +216,17 @@ with st.sidebar:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
+# ── OI positioning context ─────────────────────────────────────────────────────
+
+init_db()  # ensure schema is up to date before reading OI history
+oi_history = [x for x in get_oi_history(20) if x is not None]
+oi_pct_above_avg: Optional[float] = None
+if len(oi_history) >= 5 and futures.near_month_oi:
+    oi_avg = sum(oi_history) / len(oi_history)
+    if oi_avg > 0:
+        oi_pct_above_avg = (futures.near_month_oi - oi_avg) / oi_avg * 100
+
+
 # ── Decision Engine ────────────────────────────────────────────────────────────
 
 signals = generate_signals(
@@ -224,6 +235,8 @@ signals = generate_signals(
     brent_5d_change=brent_5d,
     usdinr_5d_change=usdinr_5d,
     levels=levels,
+    futures=futures,
+    oi_pct_above_avg=oi_pct_above_avg,
 )
 decision = make_decision(signals, spot=tech.spot)
 
@@ -243,6 +256,7 @@ snapshot = {
     "confidence":     decision.confidence,
     "rationale":      decision.rationale,
     "score":          decision.score,
+    "near_month_oi":  futures.near_month_oi,
     "raw_json":       json.dumps({
         "tech":    vars(tech),
         "futures": vars(futures),
@@ -278,7 +292,14 @@ if monthly_receivable_usd:
 st.divider()
 
 # Section 2 — Technical Summary
-render_technical_summary(tech, futures.near_month_price, futures.near_month_basis)
+render_technical_summary(
+    tech,
+    futures.near_month_price,
+    futures.near_month_basis,
+    futures_oi=futures.near_month_oi,
+    futures_oi_change=futures.near_month_oi_change,
+    oi_pct_above_avg=oi_pct_above_avg,
+)
 st.plotly_chart(
     build_usdinr_chart(price.usdinr_history, tech, levels, lookback_months),
     use_container_width=True,

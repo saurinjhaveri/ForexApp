@@ -73,7 +73,14 @@ def _stat_card(label: str, value: str, sub: str = "", sub_color: str = "#94a3b8"
     </div>"""
 
 
-def render_technical_summary(tech: TechnicalSnapshot, futures_near: Optional[float], futures_basis: Optional[float]) -> None:
+def render_technical_summary(
+    tech: TechnicalSnapshot,
+    futures_near: Optional[float],
+    futures_basis: Optional[float],
+    futures_oi: Optional[float] = None,
+    futures_oi_change: Optional[float] = None,
+    oi_pct_above_avg: Optional[float] = None,
+) -> None:
     st.subheader("Spot & Technical Summary")
 
     rsi_d = f"{tech.rsi_daily:.1f}" if tech.rsi_daily else "N/A"
@@ -101,6 +108,23 @@ def render_technical_summary(tech: TechnicalSnapshot, futures_near: Optional[flo
     row2[1].markdown(_stat_card("SMA 200", f"{tech.sma_200:.4f}" if tech.sma_200 else "N/A", sma200_sub), unsafe_allow_html=True)
     row2[2].markdown(_stat_card("BB %B", bb_pct, sub_color=bb_color), unsafe_allow_html=True)
     row2[3].markdown(_stat_card("Futures (Near)", near_val, basis_sub), unsafe_allow_html=True)
+
+    # OI row — only render if we have data
+    if futures_oi:
+        oi_change_str = f"{futures_oi_change:+,.0f} contracts today" if futures_oi_change is not None else ""
+        oi_color = "#94a3b8"
+        if futures_oi_change is not None:
+            oi_color = "#ef4444" if futures_oi_change > 0 else "#22c55e"
+        avg_str = f"{oi_pct_above_avg:+.0f}% vs 20d avg" if oi_pct_above_avg is not None else ""
+        avg_color = "#ef4444" if (oi_pct_above_avg or 0) > 15 else "#94a3b8"
+
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        row3 = st.columns(4)
+        row3[0].markdown(_stat_card("Near-Month OI", f"{futures_oi:,.0f}", oi_change_str, oi_color), unsafe_allow_html=True)
+        row3[1].markdown(_stat_card("OI vs 20d Avg", avg_str if avg_str else "N/A", sub_color=avg_color), unsafe_allow_html=True)
+        oi_signal = "Longs Building 🔴" if (futures_oi_change or 0) > 0 else ("Covering 🟡" if (futures_oi_change or 0) < 0 else "—")
+        row3[2].markdown(_stat_card("OI Signal", oi_signal), unsafe_allow_html=True)
+        row3[3].markdown(_stat_card("OI Crowded?", "YES 🔴" if (oi_pct_above_avg or 0) > 15 else "No 🟢"), unsafe_allow_html=True)
 
 
 def render_key_levels_table(tech: TechnicalSnapshot, levels: List[KeyLevel]) -> None:

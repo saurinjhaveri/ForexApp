@@ -63,6 +63,12 @@ SIGNAL_WEIGHTS = {
     "broke_above_resistance":   -1,   # Broke above — momentum intact, but still lean sell (was -2)
     "near_key_support":         -1,   # Near support — minor caution only
     "broke_below_support":      +4,   # Broke below support — sell urgently (was +3)
+
+    # ── Futures open interest positioning ────────────────────────────────────────
+    "oi_longs_building":        +2,   # OI up + price up → new longs; crowded, fragile
+    "oi_short_covering":        +1,   # OI down + price up → covering only; weaker move
+    "oi_longs_unwinding":       +3,   # OI down + price down → longs exiting; reversal confirmed
+    "oi_crowded_buildup":       +3,   # OI >15% above 20d avg → structurally crowded, sell into it
 }
 
 HEDGE_THRESHOLDS = [

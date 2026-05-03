@@ -5,6 +5,7 @@ from analysis.levels import KeyLevel
 from data.price_fetcher import PriceData
 from data.macro_scraper import MacroData
 from data.news_fetcher import NewsItem
+from data.nse_scraper import FuturesData
 from config import SIGNAL_WEIGHTS
 
 
@@ -26,6 +27,8 @@ def generate_signals(
     us_yield_5d_change: Optional[float] = None,
     usdinr_5d_change: Optional[float] = None,
     levels: Optional[List[KeyLevel]] = None,
+    futures: Optional[FuturesData] = None,
+    oi_pct_above_avg: Optional[float] = None,
 ) -> List[Signal]:
     signals: List[Signal] = []
 
@@ -189,5 +192,29 @@ def generate_signals(
                         f"Spot broke below {lvl.name} support ({lvl.price:.4f}) within 5 days "
                         f"— INR weakness accelerating, sell forward urgently")
                     break
+
+    # ── Futures open interest positioning ────────────────────────────────────────
+    if futures and futures.near_month_oi and futures.near_month_oi_change is not None:
+        oi_up    = futures.near_month_oi_change > 0
+        price_up = (usdinr_5d_change or 0) > 0
+
+        if oi_up and price_up:
+            add("oi_longs_building",
+                f"OI +{futures.near_month_oi_change:,.0f} contracts as price rises — "
+                f"new longs entering at highs; crowded trade, fragile")
+        elif not oi_up and price_up:
+            add("oi_short_covering",
+                f"OI falling ({futures.near_month_oi_change:+,.0f}) while price rises — "
+                f"short covering only, not fresh longs; move lacks conviction")
+        elif not oi_up and not price_up:
+            add("oi_longs_unwinding",
+                f"OI falling ({futures.near_month_oi_change:+,.0f}) as price falls — "
+                f"longs exiting under water; reversal underway, sell urgently")
+
+    # Crowded buildup: current OI significantly above recent average
+    if oi_pct_above_avg is not None and oi_pct_above_avg > 15:
+        add("oi_crowded_buildup",
+            f"Near-month OI is {oi_pct_above_avg:.0f}% above its 20-day average — "
+            f"structurally crowded long positioning; sharp unwind risk")
 
     return signals

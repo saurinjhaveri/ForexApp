@@ -9,7 +9,10 @@ class FuturesData:
     near_month_expiry: Optional[str] = None
     next_month_price: Optional[float] = None
     next_month_expiry: Optional[str] = None
-    near_month_basis: Optional[float] = None   # futures - spot
+    near_month_basis: Optional[float] = None       # futures - spot
+    near_month_oi: Optional[float] = None          # open interest (contracts)
+    near_month_oi_change: Optional[float] = None   # change from prev session
+    near_month_oi_change_pct: Optional[float] = None
     error: Optional[str] = None
 
 
@@ -25,7 +28,6 @@ NSE_HEADERS = {
 def fetch_nse_futures(spot_price: Optional[float] = None) -> FuturesData:
     try:
         session = requests.Session()
-        # Prime cookies
         session.get("https://www.nseindia.com", headers=NSE_HEADERS, timeout=10)
         resp = session.get(NSE_API_URL, headers=NSE_HEADERS, timeout=10)
         resp.raise_for_status()
@@ -46,19 +48,35 @@ def fetch_nse_futures(spot_price: Optional[float] = None) -> FuturesData:
         result = FuturesData()
         if len(futures) >= 1:
             near = futures[0]
-            result.near_month_price = float(
-                near["marketDeptOrderBook"]["tradeInfo"]["lastPrice"]
-            )
+            trade  = near.get("marketDeptOrderBook", {}).get("tradeInfo", {})
+            other  = near.get("marketDeptOrderBook", {}).get("otherInfo", {})
+
+            result.near_month_price = _safe_float(trade.get("lastPrice"))
             result.near_month_expiry = near["metadata"]["expiryDate"]
+
+            result.near_month_oi            = _safe_float(other.get("openInterest"))
+            result.near_month_oi_change     = _safe_float(other.get("changeinOpenInterest"))
+            result.near_month_oi_change_pct = _safe_float(other.get("pchangeinOpenInterest"))
+
             if spot_price and result.near_month_price:
                 result.near_month_basis = round(result.near_month_price - spot_price, 4)
+
         if len(futures) >= 2:
             nxt = futures[1]
-            result.next_month_price = float(
+            result.next_month_price  = _safe_float(
                 nxt["marketDeptOrderBook"]["tradeInfo"]["lastPrice"]
             )
             result.next_month_expiry = nxt["metadata"]["expiryDate"]
+
         return result
 
     except Exception as e:
         return FuturesData(error=str(e))
+
+
+def _safe_float(val) -> Optional[float]:
+    try:
+        v = float(val)
+        return v if v != 0 else None
+    except (TypeError, ValueError):
+        return None
