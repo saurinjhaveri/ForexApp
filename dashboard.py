@@ -261,25 +261,18 @@ st.caption(f"For exporters with USD receivables — {datetime.now().strftime('%A
 render_decision_box(decision, tech.spot, budget_rate=usdinr_rate_assumed)
 render_signal_breakdown(decision)
 
-# Exposure context — framed as bonus protection for opportunistic exporter
+# Exposure context
 if monthly_receivable_usd:
-    spot_now = tech.spot or usdinr_rate_assumed
-    bonus_per_usd = spot_now - usdinr_rate_assumed
-    total_bonus_inr = monthly_receivable_usd * bonus_per_usd
+    spot_now = tech.spot or 94.0
     hedged_usd = monthly_receivable_usd * decision.hedge_ratio / 100
     unhedged_usd = monthly_receivable_usd - hedged_usd
-    bonus_locked = hedged_usd * bonus_per_usd
-    bonus_at_risk = unhedged_usd * bonus_per_usd
     downside_3pct = unhedged_usd * spot_now * 0.03
-    if bonus_per_usd > 0:
-        st.info(
-            f"**Bonus above ₹{usdinr_rate_assumed:.0f} budget:** "
-            f"₹{bonus_per_usd:.2f}/USD × USD {monthly_receivable_usd:,.0f} = "
-            f"**₹{total_bonus_inr:,.0f} total bonus on the table.** &nbsp;|&nbsp; "
-            f"At {decision.hedge_ratio}% sold forward: "
-            f"₹{bonus_locked:,.0f} locked · ₹{bonus_at_risk:,.0f} still at risk. "
-            f"A 3% INR strengthening on the open portion = **₹{downside_3pct:,.0f} loss**."
-        )
+    st.info(
+        f"**Exposure:** USD {monthly_receivable_usd:,.0f} monthly receivables — "
+        f"at {decision.hedge_ratio}% sold forward: "
+        f"USD {hedged_usd:,.0f} locked · USD {unhedged_usd:,.0f} open. "
+        f"A 3% adverse INR move on the open portion = **₹{downside_3pct:,.0f} impact**."
+    )
 
 st.divider()
 
