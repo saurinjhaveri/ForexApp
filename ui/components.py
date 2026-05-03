@@ -9,43 +9,73 @@ from data.rbi_scraper import RBIData
 from data.news_fetcher import NewsItem
 
 
-def render_decision_box(decision: Decision, spot: Optional[float]) -> None:
+def render_decision_box(decision: Decision, spot: Optional[float], budget_rate: Optional[float] = None) -> None:
     color = decision.color
-    st.markdown(f"""
-    <div style="
-        background: {color}22;
-        border: 2px solid {color};
-        border-radius: 12px;
-        padding: 20px 24px;
-        margin-bottom: 20px;
-    ">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    spot_val = spot or decision.spot
+
+    # Bonus above budget
+    bonus_html = ""
+    if budget_rate and spot_val:
+        bonus = spot_val - budget_rate
+        bonus_pct = bonus / budget_rate * 100
+        bonus_html = f"""
+        <div style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:14px;">
             <div>
-                <div style="font-size:0.85rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em;">
-                    Hedge Recommendation
-                </div>
-                <div style="font-size:2rem; font-weight:800; color:{color}; line-height:1.2;">
+                <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em;">Spot</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#f1f5f9;">₹{spot_val:.4f}</div>
+            </div>
+            <div>
+                <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em;">Budget Rate</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#94a3b8;">₹{budget_rate:.2f}</div>
+            </div>
+            <div>
+                <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em;">Bonus Above Budget</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#22c55e;">+₹{bonus:.4f} / USD &nbsp;(+{bonus_pct:.1f}%)</div>
+            </div>
+        </div>"""
+
+    # Key reasons bullets
+    reasons_html = ""
+    if decision.key_reasons:
+        bullets = "".join(
+            f'<div style="margin:5px 0; padding:8px 12px; background:rgba(255,255,255,0.05); '
+            f'border-left:3px solid {color}; border-radius:4px; font-size:0.85rem; color:#cbd5e1;">'
+            f'{r}</div>'
+            for r in decision.key_reasons
+        )
+        reasons_html = f'<div style="margin-top:14px;">{bullets}</div>'
+
+    # Confidence + score footer
+    confidence_color = {"High": "#ef4444", "Medium": "#f59e0b", "Low": "#94a3b8"}.get(decision.confidence, "#94a3b8")
+
+    st.markdown(f"""
+    <div style="background:{color}18; border:2px solid {color}; border-radius:14px;
+                padding:22px 26px; margin-bottom:20px;">
+
+        {bonus_html}
+
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;
+                    flex-wrap:wrap; gap:12px;">
+            <div style="flex:1; min-width:220px;">
+                <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase;
+                            letter-spacing:0.1em; margin-bottom:4px;">Today's Action</div>
+                <div style="font-size:2.2rem; font-weight:900; color:{color}; line-height:1.1;
+                            letter-spacing:-0.02em;">
                     {decision.recommendation}
                 </div>
-                <div style="font-size:0.95rem; color:#e2e8f0; margin-top:6px;">
-                    {decision.rationale}
-                </div>
             </div>
-            <div style="text-align:right;">
-                <div style="font-size:1.5rem; font-weight:700; color:#f8fafc;">
-                    {decision.hedge_ratio}% hedge
+            <div style="text-align:right; padding-top:4px;">
+                <div style="font-size:1.4rem; font-weight:700; color:#f1f5f9;">
+                    {decision.hedge_ratio}% of receivables
                 </div>
-                <div style="font-size:0.85rem; color:#94a3b8;">
-                    Confidence: <span style="color:{color}; font-weight:600;">{decision.confidence}</span>
-                </div>
-                <div style="font-size:0.85rem; color:#94a3b8; margin-top:4px;">
-                    Signal score: {decision.score:+.0f}
+                <div style="font-size:0.82rem; color:#94a3b8; margin-top:4px;">
+                    Confidence: <span style="color:{confidence_color}; font-weight:700;">{decision.confidence}</span>
+                    &nbsp;·&nbsp; Signal score: <span style="color:#f1f5f9; font-weight:600;">{decision.score:+.0f}</span>
                 </div>
             </div>
         </div>
-        <div style="margin-top:12px; border-top:1px solid {color}44; padding-top:10px;">
-            <div style="font-size:0.8rem; color:#94a3b8;">Spot: <b style="color:#f1f5f9;">{f"₹{spot:.4f}" if spot else "N/A"}</b></div>
-        </div>
+
+        {reasons_html}
     </div>
     """, unsafe_allow_html=True)
 

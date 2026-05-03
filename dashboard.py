@@ -207,8 +207,9 @@ def _5d_change(df: pd.DataFrame) -> Optional[float]:
     return float((df["Close"].iloc[-1] / df["Close"].iloc[-6] - 1) * 100)
 
 
-dxy_5d = _5d_change(price.dxy_history)
-brent_5d = _5d_change(price.brent_history)
+dxy_5d    = _5d_change(price.dxy_history)
+brent_5d  = _5d_change(price.brent_history)
+usdinr_5d = _5d_change(price.usdinr_history)
 
 # Inject dynamic 200 SMA level
 if tech.sma_200:
@@ -221,8 +222,9 @@ signals = generate_signals(
     tech, price, macro, news,
     dxy_5d_change=dxy_5d,
     brent_5d_change=brent_5d,
+    usdinr_5d_change=usdinr_5d,
 )
-decision = make_decision(signals)
+decision = make_decision(signals, budget_rate=usdinr_rate_assumed, spot=tech.spot)
 
 
 # ── Persist daily snapshot ─────────────────────────────────────────────────────
@@ -256,21 +258,28 @@ st.title("💱 USD/INR Hedging Dashboard")
 st.caption(f"For exporters with USD receivables — {datetime.now().strftime('%A, %d %B %Y')}")
 
 # Section 1 — Decision Box
-render_decision_box(decision, tech.spot)
+render_decision_box(decision, tech.spot, budget_rate=usdinr_rate_assumed)
 render_signal_breakdown(decision)
 
-# P&L at risk callout — calculated on unhedged USD exposure
-if decision.hedge_ratio >= 0 and monthly_receivable_usd:
-    spot = tech.spot or usdinr_rate_assumed
-    unhedged_usd = monthly_receivable_usd * (1 - decision.hedge_ratio / 100)
-    # 3% adverse move (INR strengthens / USD weakens) on unhedged portion
-    downside_inr = unhedged_usd * spot * 0.03
-    st.info(
-        f"**Exposure context:** Monthly receivables ≈ USD {monthly_receivable_usd:,.0f}. "
-        f"At {decision.hedge_ratio}% hedge, unhedged exposure = USD {unhedged_usd:,.0f}. "
-        f"A 3% adverse move (INR strengthens) on unhedged portion = "
-        f"**₹{downside_inr:,.0f} loss**."
-    )
+# Exposure context — framed as bonus protection for opportunistic exporter
+if monthly_receivable_usd:
+    spot_now = tech.spot or usdinr_rate_assumed
+    bonus_per_usd = spot_now - usdinr_rate_assumed
+    total_bonus_inr = monthly_receivable_usd * bonus_per_usd
+    hedged_usd = monthly_receivable_usd * decision.hedge_ratio / 100
+    unhedged_usd = monthly_receivable_usd - hedged_usd
+    bonus_locked = hedged_usd * bonus_per_usd
+    bonus_at_risk = unhedged_usd * bonus_per_usd
+    downside_3pct = unhedged_usd * spot_now * 0.03
+    if bonus_per_usd > 0:
+        st.info(
+            f"**Bonus above ₹{usdinr_rate_assumed:.0f} budget:** "
+            f"₹{bonus_per_usd:.2f}/USD × USD {monthly_receivable_usd:,.0f} = "
+            f"**₹{total_bonus_inr:,.0f} total bonus on the table.** &nbsp;|&nbsp; "
+            f"At {decision.hedge_ratio}% sold forward: "
+            f"₹{bonus_locked:,.0f} locked · ₹{bonus_at_risk:,.0f} still at risk. "
+            f"A 3% INR strengthening on the open portion = **₹{downside_3pct:,.0f} loss**."
+        )
 
 st.divider()
 

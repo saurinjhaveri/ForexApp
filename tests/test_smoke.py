@@ -34,7 +34,7 @@ def test_full_pipeline_runs_without_error():
     macro = MacroData(india_10y_yield=7.05, india_vix=14.0, fii_equity_net_crore=1200)
     signals = generate_signals(tech, price, macro, [], dxy_5d_change=-0.8, brent_5d_change=1.5)
     decision = make_decision(signals)
-    assert decision.recommendation in ("WAIT", "WAIT WITH ALERT", "COVER PARTIAL", "COVER NOW")
+    assert decision.recommendation in ("HOLD — Let It Run", "SELL 25% FORWARD", "SELL 50% FORWARD", "SELL 75% FORWARD", "SELL ALL FORWARD")
     assert 0 <= decision.hedge_ratio <= 100
     assert len(decision.rationale) > 5
 
