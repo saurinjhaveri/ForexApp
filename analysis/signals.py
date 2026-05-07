@@ -273,4 +273,57 @@ def generate_signals(
             f"Near-month OI is {oi_pct_above_avg:.0f}% above its 20-day average — "
             f"structurally crowded long positioning; sharp unwind risk")
 
+    # ── MACD (12/26/9) ────────────────────────────────────────────────────────────
+    if tech.macd_bearish_cross:
+        hist_str = f", histogram {tech.macd_histogram:+.4f}" if tech.macd_histogram is not None else ""
+        add("macd_bearish_cross",
+            f"MACD ({tech.macd_line:.4f}) crossed below signal ({tech.macd_signal_line:.4f}){hist_str} "
+            f"— short-term momentum has turned down; confirms SELL setup")
+    elif tech.macd_bullish_cross:
+        add("macd_bullish_cross",
+            f"MACD ({tech.macd_line:.4f}) crossed above signal ({tech.macd_signal_line:.4f}) "
+            f"— short-term momentum turning up; wait for pullback")
+
+    # ── ADX (14) ─────────────────────────────────────────────────────────────────
+    if tech.adx is not None:
+        if tech.adx > 25 and tech.adx_minus_di is not None and tech.adx_plus_di is not None:
+            if tech.adx_minus_di > tech.adx_plus_di:
+                add("adx_trending_bearish",
+                    f"ADX = {tech.adx:.1f} (trending) with -DI ({tech.adx_minus_di:.1f}) > +DI ({tech.adx_plus_di:.1f}) "
+                    f"— strong downtrend confirmed; sell into strength")
+            else:
+                add("adx_trending_bullish",
+                    f"ADX = {tech.adx:.1f} (trending) with +DI ({tech.adx_plus_di:.1f}) > -DI ({tech.adx_minus_di:.1f}) "
+                    f"— uptrend has momentum; hold open for now")
+        elif tech.adx < 20:
+            add("adx_ranging",
+                f"ADX = {tech.adx:.1f} — market in ranging/consolidation mode; "
+                f"breakouts unreliable, mean-reversion favoured")
+
+    # ── Stochastic RSI (14,14,3,3) ───────────────────────────────────────────────
+    if tech.stoch_rsi_k is not None and tech.stoch_rsi_d is not None:
+        if tech.stoch_rsi_k > 80 and tech.stoch_rsi_k < tech.stoch_rsi_d:
+            add("stochrsi_overbought_bearish",
+                f"StochRSI K = {tech.stoch_rsi_k:.1f} > 80 and crossing below D ({tech.stoch_rsi_d:.1f}) "
+                f"— overbought and momentum decelerating; precision entry for sellers")
+        elif tech.stoch_rsi_k < 20:
+            add("stochrsi_oversold",
+                f"StochRSI K = {tech.stoch_rsi_k:.1f} < 20 — oversold; "
+                f"short-term bounce likely, reduce hedging urgency")
+
+    # ── EMA 9 / 21 crossover ─────────────────────────────────────────────────────
+    if tech.ema_bearish_cross:
+        add("ema_bearish_cross",
+            f"EMA 9 ({tech.ema_9:.4f}) crossed below EMA 21 ({tech.ema_21:.4f}) within 3 days "
+            f"— short-term momentum has turned bearish for USD/INR")
+    elif tech.ema_bullish_cross:
+        add("ema_bullish_cross",
+            f"EMA 9 ({tech.ema_9:.4f}) crossed above EMA 21 ({tech.ema_21:.4f}) within 3 days "
+            f"— short-term momentum turning bullish; wait for confirmation")
+    elif (tech.ema_9 is not None and tech.ema_21 is not None
+          and tech.spot < tech.ema_9 < tech.ema_21):
+        add("ema_bearish_stack",
+            f"Price ({tech.spot:.4f}) < EMA 9 ({tech.ema_9:.4f}) < EMA 21 ({tech.ema_21:.4f}) "
+            f"— short-term EMAs fully stacked bearish; downward pressure intact")
+
     return signals

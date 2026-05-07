@@ -93,6 +93,24 @@ SIGNAL_WEIGHTS = {
     "oi_short_covering":        +1,   # OI down + price up → covering only, weaker
     "oi_longs_unwinding":       +3,   # OI down + price down → reversal confirmed
     "oi_crowded_buildup":       +3,   # OI >15% above avg → structurally crowded
+
+    # ── MACD (12/26/9) ────────────────────────────────────────────────────────────
+    "macd_bearish_cross":          +2,   # MACD line crossed below signal — momentum turning down
+    "macd_bullish_cross":          -2,   # MACD line crossed above signal — momentum turning up
+
+    # ── ADX (14) ─────────────────────────────────────────────────────────────────
+    "adx_trending_bearish":        +2,   # ADX > 25 AND -DI > +DI — strong downtrend confirmed
+    "adx_trending_bullish":        -2,   # ADX > 25 AND +DI > -DI — strong uptrend confirmed
+    "adx_ranging":                 +1,   # ADX < 20 — no clear trend; reversal-prone zone
+
+    # ── Stochastic RSI (14,14,3,3) ───────────────────────────────────────────────
+    "stochrsi_overbought_bearish": +2,   # StochRSI K > 80 and K < D (topping) — precision short entry
+    "stochrsi_oversold":           -1,   # StochRSI K < 20 — oversold, bounce likely
+
+    # ── EMA 9 / 21 crossover ─────────────────────────────────────────────────────
+    "ema_bearish_cross":           +2,   # EMA 9 crossed below EMA 21 — short-term momentum turned down
+    "ema_bullish_cross":           -2,   # EMA 9 crossed above EMA 21 — short-term momentum turned up
+    "ema_bearish_stack":           +1,   # Price < EMA9 < EMA21 — bearish short-term stack
 }
 
 HEDGE_THRESHOLDS = [
@@ -157,6 +175,24 @@ GOLD_SIGNAL_WEIGHTS = {
     "gold_broke_above_resistance": -2,   # Broke above — momentum intact
     "gold_near_key_support":       -1,   # Near support — bounce risk
     "gold_broke_below_support":    +4,   # Broke below support — sell urgently
+
+    # ── MACD (12/26/9) ────────────────────────────────────────────────────────────
+    "gold_macd_bearish_cross":          +2,   # MACD crossed below signal — momentum turning down
+    "gold_macd_bullish_cross":          -2,   # MACD crossed above signal — momentum turning up
+
+    # ── ADX (14) ─────────────────────────────────────────────────────────────────
+    "gold_adx_trending_bearish":        +2,   # ADX > 25 AND -DI > +DI — strong downtrend confirmed
+    "gold_adx_trending_bullish":        -2,   # ADX > 25 AND +DI > -DI — strong uptrend confirmed
+    "gold_adx_ranging":                 +1,   # ADX < 20 — no clear trend; reversal-prone zone
+
+    # ── Stochastic RSI (14,14,3,3) ───────────────────────────────────────────────
+    "gold_stochrsi_overbought_bearish": +2,   # StochRSI K > 80 and K < D (topping) — precision short entry
+    "gold_stochrsi_oversold":           -1,   # StochRSI K < 20 — oversold bounce likely
+
+    # ── EMA 9 / 21 crossover ─────────────────────────────────────────────────────
+    "gold_ema_bearish_cross":           +2,   # EMA 9 crossed below EMA 21 — short-term momentum turned down
+    "gold_ema_bullish_cross":           -2,   # EMA 9 crossed above EMA 21 — short-term momentum turned up
+    "gold_ema_bearish_stack":           +1,   # Price < EMA9 < EMA21 — bearish short-term stack
 }
 
 GOLD_HEDGE_THRESHOLDS = [

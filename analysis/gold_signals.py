@@ -148,6 +148,59 @@ def generate_gold_signals(
                         f"Gold broke below {lvl.name} support ({lvl.price:.0f}) — sell forward urgently")
                     break
 
+    # ── MACD (12/26/9) ────────────────────────────────────────────────────────────
+    if tech.macd_bearish_cross:
+        hist_str = f", histogram {tech.macd_histogram:+.4f}" if tech.macd_histogram is not None else ""
+        add("gold_macd_bearish_cross",
+            f"MACD ({tech.macd_line:.2f}) crossed below signal ({tech.macd_signal_line:.2f}){hist_str} "
+            f"— gold short-term momentum has turned down; confirms sell setup")
+    elif tech.macd_bullish_cross:
+        add("gold_macd_bullish_cross",
+            f"MACD ({tech.macd_line:.2f}) crossed above signal ({tech.macd_signal_line:.2f}) "
+            f"— gold short-term momentum turning up; trend likely resuming")
+
+    # ── ADX (14) ─────────────────────────────────────────────────────────────────
+    if tech.adx is not None:
+        if tech.adx > 25 and tech.adx_minus_di is not None and tech.adx_plus_di is not None:
+            if tech.adx_minus_di > tech.adx_plus_di:
+                add("gold_adx_trending_bearish",
+                    f"ADX = {tech.adx:.1f} with -DI ({tech.adx_minus_di:.1f}) > +DI ({tech.adx_plus_di:.1f}) "
+                    f"— strong gold downtrend confirmed; sell forward now")
+            else:
+                add("gold_adx_trending_bullish",
+                    f"ADX = {tech.adx:.1f} with +DI ({tech.adx_plus_di:.1f}) > -DI ({tech.adx_minus_di:.1f}) "
+                    f"— gold uptrend has momentum; hold open, let it run")
+        elif tech.adx < 20:
+            add("gold_adx_ranging",
+                f"ADX = {tech.adx:.1f} — gold in consolidation; "
+                f"range-bound price action, mean-reversion favoured")
+
+    # ── Stochastic RSI (14,14,3,3) ───────────────────────────────────────────────
+    if tech.stoch_rsi_k is not None and tech.stoch_rsi_d is not None:
+        if tech.stoch_rsi_k > 80 and tech.stoch_rsi_k < tech.stoch_rsi_d:
+            add("gold_stochrsi_overbought_bearish",
+                f"StochRSI K = {tech.stoch_rsi_k:.1f} > 80 and crossing below D ({tech.stoch_rsi_d:.1f}) "
+                f"— gold overbought momentum decelerating; precision sell entry")
+        elif tech.stoch_rsi_k < 20:
+            add("gold_stochrsi_oversold",
+                f"StochRSI K = {tech.stoch_rsi_k:.1f} < 20 — gold oversold; "
+                f"bounce likely, hold open position")
+
+    # ── EMA 9 / 21 crossover ─────────────────────────────────────────────────────
+    if tech.ema_bearish_cross:
+        add("gold_ema_bearish_cross",
+            f"EMA 9 ({tech.ema_9:.0f}) crossed below EMA 21 ({tech.ema_21:.0f}) within 3 days "
+            f"— gold short-term momentum has turned bearish")
+    elif tech.ema_bullish_cross:
+        add("gold_ema_bullish_cross",
+            f"EMA 9 ({tech.ema_9:.0f}) crossed above EMA 21 ({tech.ema_21:.0f}) within 3 days "
+            f"— gold short-term momentum turning bullish; trend resuming")
+    elif (tech.ema_9 is not None and tech.ema_21 is not None
+          and tech.spot < tech.ema_9 < tech.ema_21):
+        add("gold_ema_bearish_stack",
+            f"Price (${tech.spot:.0f}) < EMA 9 (${tech.ema_9:.0f}) < EMA 21 (${tech.ema_21:.0f}) "
+            f"— short-term EMAs stacked bearish; gold under pressure")
+
     return signals
 
 

@@ -45,11 +45,23 @@ def build_usdinr_chart(
     rs = avg_gain / avg_loss.replace(0, np.nan)
     rsi = 100 - (100 / (1 + rs))
 
+    # EMA 9 / EMA 21
+    ema9  = close.ewm(span=9,  adjust=False).mean()
+    ema21 = close.ewm(span=21, adjust=False).mean()
+
+    # MACD
+    ema12       = close.ewm(span=12, adjust=False).mean()
+    ema26       = close.ewm(span=26, adjust=False).mean()
+    macd_line   = ema12 - ema26
+    macd_signal = macd_line.ewm(span=9, adjust=False).mean()
+    macd_hist   = macd_line - macd_signal
+
     fig = make_subplots(
-        rows=2, cols=1,
+        rows=3, cols=1,
         shared_xaxes=True,
-        row_heights=[0.75, 0.25],
+        row_heights=[0.62, 0.19, 0.19],
         vertical_spacing=0.03,
+        subplot_titles=["", "RSI (14)", "MACD (12/26/9)"],
     )
 
     # Candlesticks
@@ -81,6 +93,16 @@ def build_usdinr_chart(
         line=dict(color="#8b5cf6", width=1.5),
     ), row=1, col=1)
 
+    # EMAs
+    fig.add_trace(go.Scatter(
+        x=df.index, y=ema9, name="EMA 9",
+        line=dict(color="#fb923c", width=1.2),
+    ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=df.index, y=ema21, name="EMA 21",
+        line=dict(color="#22d3ee", width=1.2),
+    ), row=1, col=1)
+
     # Key levels (horizontal lines)
     colors = {"resistance": "#ef4444", "support": "#22c55e", "pivot": "#f59e0b"}
     for lvl in levels:
@@ -101,8 +123,24 @@ def build_usdinr_chart(
     fig.add_hline(y=70, line_dash="dot", line_color="#ef4444", row=2, col=1)
     fig.add_hline(y=30, line_dash="dot", line_color="#22c55e", row=2, col=1)
 
+    # MACD subplot
+    macd_colors = ["rgba(34,197,94,0.6)" if v >= 0 else "rgba(239,68,68,0.6)" for v in macd_hist]
+    fig.add_trace(go.Bar(
+        x=df.index, y=macd_hist, name="MACD Hist",
+        marker_color=macd_colors,
+    ), row=3, col=1)
+    fig.add_trace(go.Scatter(
+        x=df.index, y=macd_line, name="MACD",
+        line=dict(color="#6366f1", width=1.5),
+    ), row=3, col=1)
+    fig.add_trace(go.Scatter(
+        x=df.index, y=macd_signal, name="Signal",
+        line=dict(color="#f59e0b", width=1.2, dash="dot"),
+    ), row=3, col=1)
+    fig.add_hline(y=0, line_dash="dot", line_color="#475569", row=3, col=1)
+
     fig.update_layout(
-        height=550,
+        height=650,
         margin=dict(l=0, r=10, t=30, b=0),
         paper_bgcolor="#0f172a",
         plot_bgcolor="#1e293b",
@@ -146,11 +184,23 @@ def build_gold_chart(
     rs = avg_gain / avg_loss.replace(0, np.nan)
     rsi = 100 - (100 / (1 + rs))
 
+    # EMA 9 / EMA 21
+    ema9  = close.ewm(span=9,  adjust=False).mean()
+    ema21 = close.ewm(span=21, adjust=False).mean()
+
+    # MACD
+    ema12       = close.ewm(span=12, adjust=False).mean()
+    ema26       = close.ewm(span=26, adjust=False).mean()
+    macd_line   = ema12 - ema26
+    macd_signal = macd_line.ewm(span=9, adjust=False).mean()
+    macd_hist   = macd_line - macd_signal
+
     fig = make_subplots(
-        rows=2, cols=1,
+        rows=3, cols=1,
         shared_xaxes=True,
-        row_heights=[0.75, 0.25],
+        row_heights=[0.62, 0.19, 0.19],
         vertical_spacing=0.03,
+        subplot_titles=["", "RSI (14)", "MACD (12/26/9)"],
     )
 
     fig.add_trace(go.Candlestick(
@@ -179,6 +229,16 @@ def build_gold_chart(
         line=dict(color="#8b5cf6", width=1.5),
     ), row=1, col=1)
 
+    # EMAs
+    fig.add_trace(go.Scatter(
+        x=df.index, y=ema9, name="EMA 9",
+        line=dict(color="#fb923c", width=1.2),
+    ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=df.index, y=ema21, name="EMA 21",
+        line=dict(color="#22d3ee", width=1.2),
+    ), row=1, col=1)
+
     colors = {"resistance": "#ef4444", "support": "#22c55e", "pivot": "#f59e0b"}
     for lvl in levels:
         fig.add_hline(
@@ -197,8 +257,24 @@ def build_gold_chart(
     fig.add_hline(y=70, line_dash="dot", line_color="#ef4444", row=2, col=1)
     fig.add_hline(y=30, line_dash="dot", line_color="#22c55e", row=2, col=1)
 
+    # MACD subplot
+    macd_colors = ["rgba(34,197,94,0.6)" if v >= 0 else "rgba(239,68,68,0.6)" for v in macd_hist]
+    fig.add_trace(go.Bar(
+        x=df.index, y=macd_hist, name="MACD Hist",
+        marker_color=macd_colors,
+    ), row=3, col=1)
+    fig.add_trace(go.Scatter(
+        x=df.index, y=macd_line, name="MACD",
+        line=dict(color="#6366f1", width=1.5),
+    ), row=3, col=1)
+    fig.add_trace(go.Scatter(
+        x=df.index, y=macd_signal, name="Signal",
+        line=dict(color="#f59e0b", width=1.2, dash="dot"),
+    ), row=3, col=1)
+    fig.add_hline(y=0, line_dash="dot", line_color="#475569", row=3, col=1)
+
     fig.update_layout(
-        height=550,
+        height=650,
         margin=dict(l=0, r=10, t=30, b=0),
         paper_bgcolor="#0f172a",
         plot_bgcolor="#1e293b",

@@ -180,8 +180,52 @@ def render_technical_summary(
     else:
         row4[1].markdown(_stat_card("Fwd Premium (Ann.)", "N/A", "Requires futures data"), unsafe_allow_html=True)
 
-    row4[2].markdown("", unsafe_allow_html=True)
-    row4[3].markdown("", unsafe_allow_html=True)
+    # ── MACD card
+    if tech.macd_line is not None and tech.macd_signal_line is not None:
+        hist_color = "#22c55e" if (tech.macd_histogram or 0) >= 0 else "#ef4444"
+        hist_str = f"Hist: {tech.macd_histogram:+.4f}" if tech.macd_histogram is not None else ""
+        cross_str = "Bearish cross 🔴" if tech.macd_bearish_cross else ("Bullish cross 🟢" if tech.macd_bullish_cross else hist_str)
+        row4[2].markdown(_stat_card("MACD (12/26/9)", f"{tech.macd_line:.4f}", cross_str, hist_color), unsafe_allow_html=True)
+    else:
+        row4[2].markdown(_stat_card("MACD (12/26/9)", "N/A"), unsafe_allow_html=True)
+
+    # ── ADX card
+    if tech.adx is not None:
+        adx_label = "Trending 📈" if tech.adx > 25 else ("Ranging ◈" if tech.adx < 20 else "Weak trend")
+        adx_color = "#f59e0b" if tech.adx > 25 else ("#94a3b8" if tech.adx < 20 else "#94a3b8")
+        di_str = f"+DI {tech.adx_plus_di:.1f} / -DI {tech.adx_minus_di:.1f}" if (tech.adx_plus_di and tech.adx_minus_di) else ""
+        row4[3].markdown(_stat_card("ADX (14)", f"{tech.adx:.1f} — {adx_label}", di_str, adx_color), unsafe_allow_html=True)
+    else:
+        row4[3].markdown(_stat_card("ADX (14)", "N/A"), unsafe_allow_html=True)
+
+    # ── StochRSI + EMA row ────────────────────────────────────────────────────────
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    row5 = st.columns(4)
+
+    if tech.stoch_rsi_k is not None and tech.stoch_rsi_d is not None:
+        k_color = "#ef4444" if tech.stoch_rsi_k > 80 else ("#22c55e" if tech.stoch_rsi_k < 20 else "#94a3b8")
+        zone = "Overbought 🔴" if tech.stoch_rsi_k > 80 else ("Oversold 🟢" if tech.stoch_rsi_k < 20 else "Neutral")
+        row5[0].markdown(_stat_card("StochRSI K", f"{tech.stoch_rsi_k:.1f}", f"D: {tech.stoch_rsi_d:.1f} · {zone}", k_color), unsafe_allow_html=True)
+    else:
+        row5[0].markdown(_stat_card("StochRSI K", "N/A"), unsafe_allow_html=True)
+
+    if tech.ema_9 is not None and tech.ema_21 is not None:
+        if tech.ema_bearish_cross:
+            ema_status, ema_color = "Bearish cross 🔴", "#ef4444"
+        elif tech.ema_bullish_cross:
+            ema_status, ema_color = "Bullish cross 🟢", "#22c55e"
+        elif tech.spot < tech.ema_9 < tech.ema_21:
+            ema_status, ema_color = "Bearish stack 🔴", "#ef4444"
+        elif tech.spot > tech.ema_9 > tech.ema_21:
+            ema_status, ema_color = "Bullish stack 🟢", "#22c55e"
+        else:
+            ema_status, ema_color = "Mixed ◈", "#94a3b8"
+        row5[1].markdown(_stat_card("EMA 9 / 21", f"{tech.ema_9:.4f} / {tech.ema_21:.4f}", ema_status, ema_color), unsafe_allow_html=True)
+    else:
+        row5[1].markdown(_stat_card("EMA 9 / 21", "N/A"), unsafe_allow_html=True)
+
+    row5[2].markdown("", unsafe_allow_html=True)
+    row5[3].markdown("", unsafe_allow_html=True)
 
 
 def render_gold_technical_summary(
@@ -228,6 +272,47 @@ def render_gold_technical_summary(
     vix_val = f"{us_vix:.1f}" if us_vix else "N/A"
     vix_color = "#ef4444" if (us_vix or 0) > 25 else "#94a3b8"
     row2[3].markdown(_stat_card("US VIX", vix_val, dxy_sub, vix_color), unsafe_allow_html=True)
+
+    # ── MACD + ADX row ────────────────────────────────────────────────────────────
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    row3 = st.columns(4)
+
+    if tech.macd_line is not None and tech.macd_signal_line is not None:
+        hist_color = "#22c55e" if (tech.macd_histogram or 0) >= 0 else "#ef4444"
+        cross_str = "Bearish cross 🔴" if tech.macd_bearish_cross else ("Bullish cross 🟢" if tech.macd_bullish_cross else (f"Hist: {tech.macd_histogram:+.2f}" if tech.macd_histogram is not None else ""))
+        row3[0].markdown(_stat_card("MACD (12/26/9)", f"{tech.macd_line:.2f}", cross_str, hist_color), unsafe_allow_html=True)
+    else:
+        row3[0].markdown(_stat_card("MACD (12/26/9)", "N/A"), unsafe_allow_html=True)
+
+    if tech.adx is not None:
+        adx_label = "Trending 📈" if tech.adx > 25 else ("Ranging ◈" if tech.adx < 20 else "Weak trend")
+        adx_color = "#f59e0b" if tech.adx > 25 else "#94a3b8"
+        di_str = f"+DI {tech.adx_plus_di:.1f} / -DI {tech.adx_minus_di:.1f}" if (tech.adx_plus_di and tech.adx_minus_di) else ""
+        row3[1].markdown(_stat_card("ADX (14)", f"{tech.adx:.1f} — {adx_label}", di_str, adx_color), unsafe_allow_html=True)
+    else:
+        row3[1].markdown(_stat_card("ADX (14)", "N/A"), unsafe_allow_html=True)
+
+    if tech.stoch_rsi_k is not None and tech.stoch_rsi_d is not None:
+        k_color = "#ef4444" if tech.stoch_rsi_k > 80 else ("#22c55e" if tech.stoch_rsi_k < 20 else "#94a3b8")
+        zone = "Overbought 🔴" if tech.stoch_rsi_k > 80 else ("Oversold 🟢" if tech.stoch_rsi_k < 20 else "Neutral")
+        row3[2].markdown(_stat_card("StochRSI K", f"{tech.stoch_rsi_k:.1f}", f"D: {tech.stoch_rsi_d:.1f} · {zone}", k_color), unsafe_allow_html=True)
+    else:
+        row3[2].markdown(_stat_card("StochRSI K", "N/A"), unsafe_allow_html=True)
+
+    if tech.ema_9 is not None and tech.ema_21 is not None:
+        if tech.ema_bearish_cross:
+            ema_status, ema_color = "Bearish cross 🔴", "#ef4444"
+        elif tech.ema_bullish_cross:
+            ema_status, ema_color = "Bullish cross 🟢", "#22c55e"
+        elif tech.spot < tech.ema_9 < tech.ema_21:
+            ema_status, ema_color = "Bearish stack 🔴", "#ef4444"
+        elif tech.spot > tech.ema_9 > tech.ema_21:
+            ema_status, ema_color = "Bullish stack 🟢", "#22c55e"
+        else:
+            ema_status, ema_color = "Mixed ◈", "#94a3b8"
+        row3[3].markdown(_stat_card("EMA 9 / 21", f"${tech.ema_9:.0f} / ${tech.ema_21:.0f}", ema_status, ema_color), unsafe_allow_html=True)
+    else:
+        row3[3].markdown(_stat_card("EMA 9 / 21", "N/A"), unsafe_allow_html=True)
 
 
 def render_key_levels_table(tech: TechnicalSnapshot, levels: List[KeyLevel]) -> None:
